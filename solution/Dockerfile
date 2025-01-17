@@ -1,7 +1,7 @@
 # Dockerfile was generated from
 # https://github.com/lodthe/dockerfiles/blob/main/go/Dockerfile
 
-FROM golang:1.23-alpine3.21 AS builder
+FROM golang:1.23.4-alpine3.21 AS builder
 
 # Setup base software for building an app.
 RUN apk update && apk add ca-certificates git gcc g++ libc-dev binutils
@@ -16,7 +16,7 @@ RUN go mod download && go mod verify
 COPY . .
 
 # Build the application.
-RUN go build -o bin/application .
+RUN go build -o bin/application ./cmd
 
 # Prepare executor image.
 FROM alpine:3.21 AS runner
@@ -25,7 +25,10 @@ RUN apk update && apk add ca-certificates libc6-compat openssh bash && rm -rf /v
 
 WORKDIR /opt
 
+COPY config.yaml /opt
 COPY --from=builder /opt/bin/application ./
+
+EXPOSE 3000
 
 # Add required static files.
 #COPY assets assets
