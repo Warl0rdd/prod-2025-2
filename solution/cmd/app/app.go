@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
+	"os"
 	"solution/internal/adapters/config"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/logger"
@@ -40,7 +41,7 @@ func New(config *config.Config) *App {
 func (a *App) Start() {
 	if viper.GetBool("settings.listen-tls") {
 		if err := a.Fiber.Listen(
-			":"+viper.GetString("service.backend.port"),
+			":"+os.Getenv("SERVER_PORT"),
 			fiber.ListenConfig{
 				CertFile:    viper.GetString("service.backend.certificate.cert-file"),
 				CertKeyFile: viper.GetString("service.backend.certificate.key-file"),
@@ -49,7 +50,7 @@ func (a *App) Start() {
 		}
 	} else {
 		logger.Log.Debugf("port: %s", viper.GetString("service.backend.port"))
-		if err := a.Fiber.Listen(":" + viper.GetString("service.backend.port")); err != nil {
+		if err := a.Fiber.Listen(":" + os.Getenv("SERVER_PORT")); err != nil {
 			logger.Log.Panicf("failed to start listen (no tls): %v", err)
 		}
 	}

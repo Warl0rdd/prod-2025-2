@@ -56,11 +56,16 @@ func Configure() *Config {
 
 	logger.Log.Debug("Configuring postgres connection string")
 	dsn := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=%s TimeZone=%s",
-		viper.GetString("service.database.user"),
-		viper.GetString("service.database.password"),
-		viper.GetString("service.database.name"),
-		viper.GetString("service.database.host"),
-		viper.GetString("service.database.port"),
+		//viper.GetString("service.database.user"),
+		//viper.GetString("service.database.password"),
+		//viper.GetString("service.database.name"),
+		//viper.GetString("service.database.host"),
+		//viper.GetString("service.database.port"),
+		os.Getenv("POSTGRES_USER"),
+		os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_DATABASE"),
+		os.Getenv("POSTGRES_HOST"),
+		os.Getenv("POSTGRES_PORT"),
 		viper.GetString("service.database.ssl-mode"),
 		viper.GetString("settings.timezone"),
 	)
