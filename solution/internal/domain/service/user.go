@@ -23,7 +23,7 @@ func NewUserService(storage userStorage) *userService {
 	return &userService{storage: storage}
 }
 
-func (s *userService) Create(ctx context.Context, registerReq dto.UserRegister, code string) (*entity.User, error) {
+func (s *userService) Create(ctx context.Context, registerReq dto.UserRegister) (*entity.User, error) {
 
 	user := entity.User{
 		Email:    registerReq.Email,

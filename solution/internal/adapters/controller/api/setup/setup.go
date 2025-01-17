@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/viper"
 	"solution/cmd/app"
 	v1 "solution/internal/adapters/controller/api/v1"
+	"solution/internal/adapters/controller/api/v1/b2b"
 )
 
 func Setup(app *app.App) {
@@ -21,7 +22,10 @@ func Setup(app *app.App) {
 	pingHandler := v1.NewPingHandler()
 	pingHandler.Setup(apiV1)
 
+	businessHandler := b2b.NewBusinessHandler(app)
+	businessHandler.Setup(apiV1)
+
 	// Setup user routes
-	userHandler := v1.NewUserHandler(app)
-	userHandler.Setup(apiV1)
+	//userHandler := v1.NewUserHandler(app)
+	//userHandler.Setup(apiV1)
 }

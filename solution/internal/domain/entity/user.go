@@ -5,23 +5,14 @@ import (
 	"time"
 )
 
-// User is a struct that represents a user in database.
 type User struct {
 	ID        string    `json:"id" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
 
-	Email    string  `json:"email" gorm:"index"`
-	Password []byte  `json:"-"`
-	Role     string  `json:"role" gorm:"default:user;not null"`
-	Token    []Token `json:"-" gorm:"foreignKey:user_id;references:id"`
-	Username string  `json:"username"`
-}
-
-// HashedPassword is a function to hash the password.
-func HashedPassword(password string) []byte {
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), 14)
-	return hashedPassword
+	Email    string `json:"email" gorm:"index"`
+	Password []byte `json:"-"`
+	Username string `json:"username"`
 }
 
 // SetPassword is a method to hash the password before storing it.
@@ -33,8 +24,3 @@ func (user *User) SetPassword(password string) {
 func (user *User) ComparePassword(password string) error {
 	return bcrypt.CompareHashAndPassword(user.Password, []byte(password))
 }
-
-const (
-	userRole  = "user"
-	adminRole = "admin"
-)

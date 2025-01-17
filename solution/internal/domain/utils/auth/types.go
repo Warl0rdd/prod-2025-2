@@ -1,8 +1,6 @@
 package auth
 
 const (
-	TokenTypeAccess        = "access"
-	TokenTypeRefresh       = "refresh"
-	TokenTypeResetPassword = "resetPassword"
-	TokenTypeVerifyEmail   = "verifyEmail"
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
 )

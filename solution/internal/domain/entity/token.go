@@ -12,5 +12,4 @@ type Token struct {
 	UserID  string    `gorm:"not null;type:uuid"`
 	Type    string    `gorm:"not null"`
 	Expires time.Time `gorm:"not null"`
-	User    *User     `gorm:"foreignKey:user_id;references:id"`
 }

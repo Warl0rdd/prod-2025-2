@@ -6,4 +6,5 @@ import "solution/internal/domain/entity"
 var Migrations = []interface{}{
 	&entity.User{},
 	&entity.Token{},
+	&entity.Business{},
 }
