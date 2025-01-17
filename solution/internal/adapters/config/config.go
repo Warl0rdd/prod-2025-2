@@ -61,7 +61,7 @@ func Configure() *Config {
 		//viper.GetString("service.database.name"),
 		//viper.GetString("service.database.host"),
 		//viper.GetString("service.database.port"),
-		os.Getenv("POSTGRES_USER"),
+		os.Getenv("POSTGRES_USERNAME"),
 		os.Getenv("POSTGRES_PASSWORD"),
 		os.Getenv("POSTGRES_DATABASE"),
 		os.Getenv("POSTGRES_HOST"),
