@@ -7,6 +7,7 @@ import (
 	"solution/cmd/app"
 	v1 "solution/internal/adapters/controller/api/v1"
 	"solution/internal/adapters/controller/api/v1/b2b"
+	"solution/internal/adapters/controller/api/v1/middlewares"
 )
 
 func Setup(app *app.App) {
@@ -19,11 +20,16 @@ func Setup(app *app.App) {
 	// Setup api v1 routes
 	apiV1 := app.Fiber.Group("/api")
 
+	middlewareHandler := middlewares.NewMiddlewareHandler(app)
+
 	pingHandler := v1.NewPingHandler()
 	pingHandler.Setup(apiV1)
 
 	businessHandler := b2b.NewBusinessHandler(app)
 	businessHandler.Setup(apiV1)
+
+	promoHandler := b2b.NewPromoHandler(app)
+	promoHandler.Setup(apiV1, middlewareHandler.IsAuthenticated())
 
 	// Setup user routes
 	//userHandler := v1.NewUserHandler(app)

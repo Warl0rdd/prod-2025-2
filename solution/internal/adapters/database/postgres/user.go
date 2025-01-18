@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"gorm.io/gorm"
 	"solution/internal/domain/entity"
 )
@@ -26,6 +27,9 @@ func (s *userStorage) Create(ctx context.Context, user entity.User) (*entity.Use
 func (s *userStorage) GetByID(ctx context.Context, id string) (*entity.User, error) {
 	var user *entity.User
 	err := s.db.WithContext(ctx).Model(&entity.User{}).Where("id = ?", id).First(&user).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
 	return user, err
 }
 

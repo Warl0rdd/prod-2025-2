@@ -6,7 +6,6 @@ import (
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
-	"solution/internal/adapters/logger"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"solution/internal/domain/service"
@@ -46,7 +45,6 @@ func (h BusinessHandler) register(c fiber.Ctx) error {
 	var businessDTO dto.BusinessRegister
 
 	if err := c.Bind().Body(&businessDTO); err != nil {
-		logger.Log.Error(err)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -54,7 +52,6 @@ func (h BusinessHandler) register(c fiber.Ctx) error {
 	}
 
 	if errValidate := h.validator.ValidateData(businessDTO); errValidate != nil {
-		logger.Log.Error(errValidate)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -82,7 +79,7 @@ func (h BusinessHandler) register(c fiber.Ctx) error {
 		Token:      tokens.Access.Token,
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(response)
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 func (h BusinessHandler) login(c fiber.Ctx) error {

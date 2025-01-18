@@ -13,6 +13,8 @@ type Business struct {
 	Email    string `json:"email" gorm:"uniqueIndex;not null;"`
 	Password []byte `json:"-"`
 	Name     string `json:"name"`
+
+	Promos []Promo `json:"promos" gorm:"foreignKey:CompanyID;"`
 }
 
 // HashedPassword is a function to hash the password.

@@ -7,4 +7,8 @@ var Migrations = []interface{}{
 	&entity.User{},
 	&entity.Token{},
 	&entity.Business{},
+	&entity.Promo{},
+	&entity.PromoUnique{},
+	&entity.Target{},
+	&entity.Category{},
 }

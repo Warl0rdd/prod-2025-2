@@ -57,6 +57,20 @@ func GetUserFromJWT(jwt, tokenType string, context context.Context, getUser func
 	return user, nil
 }
 
+func GetBusinessFromJWT(jwt, tokenType string, context context.Context, getBusiness func(context.Context, string) (*entity.Business, error)) (*entity.Business, error) {
+	id, errVerify := VerifyToken(jwt, viper.GetString("service.backend.jwt.secret"), tokenType)
+	if errVerify != nil {
+		return &entity.Business{}, errVerify
+	}
+
+	business, errGetUser := getBusiness(context, id)
+	if errGetUser != nil {
+		return &entity.Business{}, errGetUser
+	}
+
+	return business, nil
+}
+
 func GenerateToken(userID string, expires time.Time, tokenType string) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":  userID,
