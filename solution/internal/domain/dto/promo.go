@@ -42,6 +42,10 @@ type PromoGetWithPagination struct {
 	Countries []countries.CountryCode
 }
 
+type PromoGetByID struct {
+	ID string `uri:"id"`
+}
+
 type PromoDTO struct {
 	PromoID     string    `json:"promo_id" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
 	CompanyID   string    `json:"company_id" gorm:"not null;foreignKey:ID"`

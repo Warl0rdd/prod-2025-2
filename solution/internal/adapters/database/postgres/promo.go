@@ -20,6 +20,7 @@ func NewPromoStorage(db *gorm.DB) *promoStorage {
 }
 
 // Create is a method to create a new Promo in database.
+// TODO: BUG target is not being created
 func (s *promoStorage) Create(ctx context.Context, promo entity.Promo) (*entity.Promo, error) {
 	err := s.db.Model(&promo).WithContext(ctx).Create(&promo).Error
 	return &promo, err
@@ -28,7 +29,7 @@ func (s *promoStorage) Create(ctx context.Context, promo entity.Promo) (*entity.
 // GetByID is a method that returns an error and a pointer to a Promo instance by id.
 func (s *promoStorage) GetByID(ctx context.Context, id string) (*entity.Promo, error) {
 	var promo *entity.Promo
-	err := s.db.WithContext(ctx).Model(&entity.Promo{}).Where("id = ?", id).First(&promo).Error
+	err := s.db.WithContext(ctx).Model(&entity.Promo{}).Where("promo_id = ?", id).First(&promo).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}

@@ -142,8 +142,39 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(promos)
 }
 
+func (h PromoHandler) getByID(c fiber.Ctx) error {
+	var promoIdDTO dto.PromoGetByID
+	business := c.Locals("business").(*entity.Business)
+
+	if err := c.Bind().URI(&promoIdDTO); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	promo, err := h.promoService.GetByID(c.Context(), promoIdDTO.ID)
+
+	if err != nil || promo == nil {
+		return c.Status(fiber.StatusNotFound).JSON(dto.HTTPError{
+			Status:  "error",
+			Message: "Промокод не найден.",
+		})
+	}
+
+	if promo.CompanyID != business.ID {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPError{
+			Status:  "error",
+			Message: "Промокод не принадлежит этой компании.",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(promo)
+}
+
 func (h PromoHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	promoGroup := router.Group("/business")
 	promoGroup.Post("/promo", h.create, middleware)
 	promoGroup.Get("/promo", h.getWithPagination, middleware)
+	promoGroup.Get("/promo/:id", h.getByID, middleware)
 }
