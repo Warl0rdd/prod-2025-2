@@ -6,7 +6,7 @@ import (
 )
 
 type Promo struct {
-	PromoID   string    `json:"id" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
+	PromoID   string    `json:"promo_id" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
 	CompanyID string    `json:"company_id" gorm:"not null;foreignKey:ID"`
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
@@ -19,6 +19,8 @@ type Promo struct {
 	ImageURL    string        `json:"image_url"`
 	MaxCount    int           `json:"max_count" gorm:"not null"`
 	Mode        string        `json:"mode" gorm:"not null"`
+	LikeCount   int           `json:"like_count" gorm:"default:0"`
+	UsedCount   int           `json:"used_count" gorm:"default:0"`
 	PromoCommon string        `json:"promo_common"`
 	PromoUnique []PromoUnique `json:"promo_unique" gorm:"foreignKey:PromoUniqueID;"`
 }

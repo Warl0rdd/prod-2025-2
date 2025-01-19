@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"github.com/biter777/countries"
+	"github.com/gofiber/fiber/v3"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"strings"
@@ -13,6 +14,7 @@ type promoStorage interface {
 	Create(ctx context.Context, promo entity.Promo) (*entity.Promo, error)
 	GetByID(ctx context.Context, id string) (*entity.Promo, error)
 	Update(ctx context.Context, promo *entity.Promo) (*entity.Promo, error)
+	GetWithPagination(ctx context.Context, limit, offset int, sortBy string, countries []countries.CountryCode) ([]entity.Promo, int64, error)
 }
 
 type promoService struct {
@@ -27,10 +29,16 @@ func NewPromoService(promoStorage promoStorage, businessStorage businessStorage)
 	}
 }
 
-func (s *promoService) Create(ctx context.Context, promoDTO dto.PromoCreate) (*entity.Promo, error) {
+func (s *promoService) Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO dto.PromoCreate) (*entity.Promo, error) {
 
-	activeFrom, _ := time.Parse("2006-01-02", promoDTO.ActiveFrom)
-	activeUntil, _ := time.Parse("2006-01-02", promoDTO.ActiveUntil)
+	activeFrom, timeError := time.Parse("2006-01-02", promoDTO.ActiveFrom)
+	if timeError != nil {
+		return nil, timeError
+	}
+	activeUntil, timeError := time.Parse("2006-01-02", promoDTO.ActiveUntil)
+	if timeError != nil {
+		return nil, timeError
+	}
 	var categories []entity.Category
 	var promoUniques []entity.PromoUnique
 	for _, category := range promoDTO.Target.Categories {
@@ -44,8 +52,7 @@ func (s *promoService) Create(ctx context.Context, promoDTO dto.PromoCreate) (*e
 		})
 	}
 
-	// TODO: перписать что бы номрально было
-	company, _ := s.businessStorage.GetByID(ctx, promoDTO.CompanyID)
+	company := fiberCTX.Locals("business").(*entity.Business)
 
 	promo := entity.Promo{
 		Target: entity.Target{
@@ -77,6 +84,10 @@ func (s *promoService) Create(ctx context.Context, promoDTO dto.PromoCreate) (*e
 
 func (s *promoService) GetByID(ctx context.Context, id string) (*entity.Promo, error) {
 	return s.promoStorage.GetByID(ctx, id)
+}
+
+func (s *promoService) GetWithPagination(ctx context.Context, dto dto.PromoGetWithPagination) ([]entity.Promo, int64, error) {
+	return s.promoStorage.GetWithPagination(ctx, dto.Limit, dto.Offset, dto.SortBy, dto.Countries)
 }
 
 func (s *promoService) Update(ctx context.Context, promo *entity.Promo) (*entity.Promo, error) {

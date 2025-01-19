@@ -3,7 +3,9 @@ package postgres
 import (
 	"context"
 	"errors"
+	"github.com/biter777/countries"
 	"gorm.io/gorm"
+	"slices"
 	"solution/internal/domain/entity"
 )
 
@@ -38,6 +40,23 @@ func (s *promoStorage) GetAll(ctx context.Context, limit, offset int) ([]entity.
 	var promos []entity.Promo
 	err := s.db.WithContext(ctx).Model(&entity.Promo{}).Limit(limit).Offset(offset).Find(&promos).Error
 	return promos, err
+}
+
+func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int, sortBy string, countries []countries.CountryCode) ([]entity.Promo, int64, error) {
+	var promos []entity.Promo
+	var total int64
+	query := s.db.WithContext(ctx).Model(&entity.Promo{}).Limit(limit).Offset(offset).Order(sortBy).Find(&promos)
+	err := query.Error
+	s.db.WithContext(ctx).Model(&entity.Promo{}).Count(&total)
+	if len(countries) == 0 {
+		return promos, total, err
+	}
+	for i, promo := range promos {
+		if !slices.Contains(countries, promo.Target.Country) {
+			promos = append(promos[:i], promos[i+1:]...)
+		}
+	}
+	return promos, total, err
 }
 
 // Update is a method to update an existing Promo in database.
