@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"github.com/biter777/countries"
 	"golang.org/x/crypto/bcrypt"
 	"time"
 )
@@ -10,9 +11,13 @@ type User struct {
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
 
-	Email    string `json:"email" gorm:"index"`
-	Password []byte `json:"-"`
-	Username string `json:"username"`
+	Email     string                `json:"email" gorm:"index"`
+	Password  []byte                `json:"-"`
+	Name      string                `json:"name"`
+	Surname   string                `json:"surname"`
+	AvatarURL string                `json:"avatar_url"`
+	Age       int                   `json:"age"`
+	Country   countries.CountryCode `json:"country"`
 }
 
 // SetPassword is a method to hash the password before storing it.

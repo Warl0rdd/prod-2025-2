@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"github.com/biter777/countries"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
+	"strings"
 )
 
 type userStorage interface {
@@ -26,8 +28,13 @@ func NewUserService(storage userStorage) *userService {
 func (s *userService) Create(ctx context.Context, registerReq dto.UserRegister) (*entity.User, error) {
 
 	user := entity.User{
-		Email:    registerReq.Email,
-		Username: registerReq.Username,
+		Email:     registerReq.Email,
+		Password:  nil,
+		Name:      registerReq.Name,
+		Surname:   registerReq.Surname,
+		AvatarURL: registerReq.AvatarURL,
+		Age:       registerReq.Other.Age,
+		Country:   countries.ByName(strings.ToUpper(registerReq.Other.Country)),
 	}
 	user.SetPassword(registerReq.Password)
 	return s.storage.Create(ctx, user)

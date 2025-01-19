@@ -7,6 +7,7 @@ import (
 	"solution/cmd/app"
 	v1 "solution/internal/adapters/controller/api/v1"
 	"solution/internal/adapters/controller/api/v1/b2b"
+	"solution/internal/adapters/controller/api/v1/b2c"
 	"solution/internal/adapters/controller/api/v1/middlewares"
 )
 
@@ -32,6 +33,6 @@ func Setup(app *app.App) {
 	promoHandler.Setup(apiV1, middlewareHandler.IsAuthenticated())
 
 	// Setup user routes
-	//userHandler := v1.NewUserHandler(app)
-	//userHandler.Setup(apiV1)
+	userHandler := b2c.NewUserHandler(app)
+	userHandler.Setup(apiV1, middlewareHandler.IsAuthenticated())
 }

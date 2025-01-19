@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"gorm.io/gorm"
+	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/entity"
 )
 
@@ -20,6 +21,9 @@ func NewUserStorage(db *gorm.DB) *userStorage {
 // Create is a method to create a new User in database.
 func (s *userStorage) Create(ctx context.Context, user entity.User) (*entity.User, error) {
 	err := s.db.WithContext(ctx).Create(&user).Error
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return nil, errorz.EmailTaken
+	}
 	return &user, err
 }
 
