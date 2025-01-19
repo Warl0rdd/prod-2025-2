@@ -2,12 +2,14 @@ package b2b
 
 import (
 	"context"
+	"errors"
 	"github.com/biter777/countries"
 	"github.com/gofiber/fiber/v3"
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
 	"solution/internal/adapters/logger"
+	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"solution/internal/domain/service"
@@ -19,7 +21,7 @@ type PromoService interface {
 	Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO dto.PromoCreate) (*entity.Promo, error)
 	GetByID(ctx context.Context, uuid string) (*entity.Promo, error)
 	GetWithPagination(ctx context.Context, dto dto.PromoGetWithPagination) ([]entity.Promo, int64, error)
-	Update(ctx context.Context, promo *entity.Promo) (*entity.Promo, error)
+	Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.PromoCreate, id string) (*entity.Promo, error)
 }
 
 type PromoHandler struct {
@@ -172,9 +174,58 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(promo)
 }
 
+func (h PromoHandler) update(c fiber.Ctx) error {
+	type Params struct {
+		ID string `uri:"id"`
+	}
+
+	var params Params
+	var promoDTO dto.PromoCreate
+
+	if err := c.Bind().Body(&promoDTO); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if err := c.Bind().URI(&params); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	newPromo, err := h.promoService.Update(c.Context(), c, promoDTO, params.ID)
+
+	if errors.Is(err, errorz.Forbidden) {
+		return c.Status(fiber.StatusForbidden).JSON(dto.HTTPError{
+			Status:  "error",
+			Message: "Промокод не принадлежит этой компании.",
+		})
+	}
+
+	if errors.Is(err, errorz.NotFound) {
+		return c.Status(fiber.StatusNotFound).JSON(dto.HTTPError{
+			Status:  "error",
+			Message: "Промокод не найден.",
+		})
+	}
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(newPromo)
+}
+
 func (h PromoHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	promoGroup := router.Group("/business")
 	promoGroup.Post("/promo", h.create, middleware)
 	promoGroup.Get("/promo", h.getWithPagination, middleware)
 	promoGroup.Get("/promo/:id", h.getByID, middleware)
+	promoGroup.Patch("/promo/:id", h.update, middleware)
 }

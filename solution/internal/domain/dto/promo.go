@@ -47,24 +47,24 @@ type PromoGetByID struct {
 }
 
 type PromoDTO struct {
-	PromoID     string    `json:"promo_id" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
-	CompanyID   string    `json:"company_id" gorm:"not null;foreignKey:ID"`
+	PromoID     string    `json:"promo_id"`
+	CompanyID   string    `json:"company_id"`
 	CompanyName string    `json:"company_name"`
 	CreatedAt   time.Time `json:"-"`
 	UpdatedAt   time.Time `json:"-"`
 
-	Target      Target    `json:"target" gorm:"foreignKey:TargetID;not null"`
-	Active      bool      `json:"active" gorm:"default:true"`
+	Target      Target    `json:"target"`
+	Active      bool      `json:"active"`
 	ActiveFrom  time.Time `json:"active_from"`
 	ActiveUntil time.Time `json:"active_until"`
-	Description string    `json:"description" gorm:"not null"`
+	Description string    `json:"description"`
 	ImageURL    string    `json:"image_url"`
-	MaxCount    int       `json:"max_count" gorm:"not null"`
-	Mode        string    `json:"mode" gorm:"not null"`
-	LikeCount   int       `json:"like_count" gorm:"default:0"`
-	UsedCount   int       `json:"used_count" gorm:"default:0"`
+	MaxCount    int       `json:"max_count"`
+	Mode        string    `json:"mode"`
+	LikeCount   int       `json:"like_count"`
+	UsedCount   int       `json:"used_count"`
 	PromoCommon string    `json:"promo_common"`
-	PromoUnique []string  `json:"promo_unique" gorm:"foreignKey:PromoUniqueID;"`
+	PromoUnique []string  `json:"promo_unique"`
 }
 
 type PromoGetWithPaginationResponse struct {

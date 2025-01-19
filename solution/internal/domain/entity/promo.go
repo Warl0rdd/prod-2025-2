@@ -27,12 +27,14 @@ type Promo struct {
 
 type PromoUnique struct {
 	PromoUniqueID string `json:"-" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
+	PromoID       string `json:"-" gorm:"not null;foreignKey:PromoID"`
 	Body          string `json:"-" gorm:"not null"`
 	Activated     bool   `json:"-" gorm:"default:false"`
 }
 
 type Target struct {
 	TargetID   string                `json:"-" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
+	PromoID    string                `json:"-" gorm:"not null;foreignKey:PromoID"`
 	AgeFrom    int                   `json:"age_from"`
 	AgeUntil   int                   `json:"age_until"`
 	Country    countries.CountryCode `json:"country"`

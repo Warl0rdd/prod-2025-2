@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"github.com/biter777/countries"
+	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 	"slices"
+	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/entity"
 )
 
@@ -23,13 +25,14 @@ func NewPromoStorage(db *gorm.DB) *promoStorage {
 // TODO: BUG target is not being created
 func (s *promoStorage) Create(ctx context.Context, promo entity.Promo) (*entity.Promo, error) {
 	err := s.db.Model(&promo).WithContext(ctx).Create(&promo).Error
+
 	return &promo, err
 }
 
 // GetByID is a method that returns an error and a pointer to a Promo instance by id.
 func (s *promoStorage) GetByID(ctx context.Context, id string) (*entity.Promo, error) {
 	var promo *entity.Promo
-	err := s.db.WithContext(ctx).Model(&entity.Promo{}).Where("promo_id = ?", id).First(&promo).Error
+	err := s.db.WithContext(ctx).Model(&entity.Promo{}).Where("promo_id = ?", id).Preload("Target").Preload("Categories").Preload("PromoUnique").First(&promo).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
@@ -61,7 +64,15 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 }
 
 // Update is a method to update an existing Promo in database.
-func (s *promoStorage) Update(ctx context.Context, promo *entity.Promo) (*entity.Promo, error) {
-	err := s.db.WithContext(ctx).Model(&entity.Promo{}).Where("id = ?", promo.PromoID).Updates(&promo).Error
-	return promo, err
+func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo *entity.Promo) (*entity.Promo, error) {
+	var oldPromo entity.Promo
+	s.db.WithContext(ctx).Model(&entity.Promo{}).Where("id = ?", promo.PromoID).First(&oldPromo)
+	if oldPromo.CompanyID != fiberCtx.Locals("business").(*entity.Business).ID {
+		return nil, errorz.Forbidden
+	}
+	query := s.db.WithContext(ctx).Model(&entity.Promo{}).Where("id = ?", promo.PromoID).Updates(&promo)
+	if query.RowsAffected == 0 {
+		return nil, errorz.NotFound
+	}
+	return promo, query.Error
 }
