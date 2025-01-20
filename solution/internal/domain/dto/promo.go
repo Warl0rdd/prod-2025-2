@@ -10,7 +10,7 @@ type PromoCreate struct {
 	ActiveFrom  string   `json:"active_from"`
 	ActiveUntil string   `json:"active_until"`
 	Description string   `json:"description" validate:"required"`
-	ImageURL    string   `json:"image_url" validate:"url"`
+	ImageURL    string   `json:"image_url" validate:"omitempty,url"`
 	MaxCount    int      `json:"max_count"`
 	Mode        string   `json:"mode"`
 	PromoCommon string   `json:"promo_common"`
