@@ -11,7 +11,6 @@ type Promo struct {
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
 
-	Target      Target        `json:"target" gorm:"foreignKey:TargetID;not null"`
 	Active      bool          `json:"-" gorm:"default:true"`
 	ActiveFrom  time.Time     `json:"active_from"`
 	ActiveUntil time.Time     `json:"active_until"`
@@ -22,27 +21,23 @@ type Promo struct {
 	LikeCount   int           `json:"like_count" gorm:"default:0"`
 	UsedCount   int           `json:"used_count" gorm:"default:0"`
 	PromoCommon string        `json:"promo_common"`
-	PromoUnique []PromoUnique `json:"promo_unique" gorm:"foreignKey:PromoUniqueID;"`
+	PromoUnique []PromoUnique `json:"promo_unique;" gorm:"foreignKey:PromoID"`
+
+	AgeFrom    int                   `json:"age_from"`
+	AgeUntil   int                   `json:"age_until"`
+	Country    countries.CountryCode `json:"country"`
+	Categories []Category            `json:"categories" gorm:"foreignKey:PromoID"`
 }
 
 type PromoUnique struct {
 	PromoUniqueID string `json:"-" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
-	PromoID       string `json:"-" gorm:"not null;foreignKey:PromoID"`
+	PromoID       string `json:"-" gorm:"not null;"`
 	Body          string `json:"-" gorm:"not null"`
 	Activated     bool   `json:"-" gorm:"default:false"`
 }
 
-type Target struct {
-	TargetID   string                `json:"-" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
-	PromoID    string                `json:"-" gorm:"not null;foreignKey:PromoID"`
-	AgeFrom    int                   `json:"age_from"`
-	AgeUntil   int                   `json:"age_until"`
-	Country    countries.CountryCode `json:"country"`
-	Categories []Category            `json:"categories" gorm:"foreignKey:CategoryID;"`
-}
-
 type Category struct {
 	CategoryID string `json:"id" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
-	TargetID   string `json:"-" gorm:"not null"`
+	PromoID    string `json:"-" gorm:"not null;"`
 	Name       string `json:"name" gorm:"not null"`
 }

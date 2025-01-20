@@ -55,12 +55,6 @@ func (s *promoService) Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO 
 	company := fiberCTX.Locals("business").(*entity.Business)
 
 	promo := entity.Promo{
-		Target: entity.Target{
-			AgeFrom:    promoDTO.Target.AgeFrom,
-			AgeUntil:   promoDTO.Target.AgeUntil,
-			Country:    countries.ByName(strings.ToUpper(promoDTO.Target.Country)),
-			Categories: categories,
-		},
 		CompanyID:   company.ID,
 		Active:      true,
 		ActiveFrom:  activeFrom,
@@ -71,6 +65,10 @@ func (s *promoService) Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO 
 		Mode:        promoDTO.Mode,
 		PromoCommon: promoDTO.PromoCommon,
 		PromoUnique: promoUniques,
+		AgeFrom:     promoDTO.Target.AgeFrom,
+		AgeUntil:    promoDTO.Target.AgeUntil,
+		Country:     countries.ByName(strings.ToUpper(promoDTO.Target.Country)),
+		Categories:  categories,
 	}
 
 	company.Promos = append(company.Promos, promo)
@@ -114,12 +112,10 @@ func (s *promoService) Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.P
 	}
 
 	promo := entity.Promo{
-		Target: entity.Target{
-			AgeFrom:    dto.Target.AgeFrom,
-			AgeUntil:   dto.Target.AgeUntil,
-			Country:    countries.ByName(strings.ToUpper(dto.Target.Country)),
-			Categories: categories,
-		},
+		AgeFrom:     dto.Target.AgeFrom,
+		AgeUntil:    dto.Target.AgeUntil,
+		Country:     countries.ByName(strings.ToUpper(dto.Target.Country)),
+		Categories:  categories,
 		Active:      true,
 		ActiveFrom:  activeFrom,
 		ActiveUntil: activeUntil,

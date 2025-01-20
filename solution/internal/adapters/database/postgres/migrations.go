@@ -9,6 +9,5 @@ var Migrations = []interface{}{
 	&entity.Business{},
 	&entity.Promo{},
 	&entity.PromoUnique{},
-	&entity.Target{},
 	&entity.Category{},
 }

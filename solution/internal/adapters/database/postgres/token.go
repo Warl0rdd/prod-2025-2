@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// TODO delete
 // tokenStorage is a struct that contains a pointer to a gorm.DB instance to interact with token repository.
 type tokenStorage struct {
 	db *gorm.DB

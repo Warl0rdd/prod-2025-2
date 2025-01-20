@@ -100,7 +100,7 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 	var promoRequestDTO dto.PromoGetWithPaginationRequest
 
-	if err := c.Bind().Header(&promoRequestDTO); err != nil {
+	if err := c.Bind().Query(&promoRequestDTO); err != nil {
 		logger.Log.Error(err)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
 			Status:  "error",
@@ -157,10 +157,10 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 
 	promo, err := h.promoService.GetByID(c.Context(), promoIdDTO.ID)
 
-	if err != nil || promo == nil {
+	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(dto.HTTPError{
 			Status:  "error",
-			Message: "Промокод не найден.",
+			Message: err.Error(),
 		})
 	}
 
@@ -171,7 +171,38 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(promo)
+	var categories, promoUniques []string
+
+	for _, category := range promo.Categories {
+		categories = append(categories, category.Name)
+	}
+
+	for _, promoUnique := range promo.PromoUnique {
+		promoUniques = append(promoUniques, promoUnique.Body)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(dto.PromoDTO{
+		PromoID:     promo.PromoID,
+		CompanyID:   promo.CompanyID,
+		CompanyName: business.Name,
+		Target: dto.Target{
+			AgeFrom:    promo.AgeFrom,
+			AgeUntil:   promo.AgeUntil,
+			Country:    promo.Country.Alpha2(),
+			Categories: categories,
+		},
+		Active:      promo.Active,
+		ActiveFrom:  promo.ActiveFrom,
+		ActiveUntil: promo.ActiveUntil,
+		Description: promo.Description,
+		ImageURL:    promo.ImageURL,
+		MaxCount:    promo.MaxCount,
+		Mode:        promo.Mode,
+		LikeCount:   promo.LikeCount,
+		UsedCount:   promo.UsedCount,
+		PromoCommon: promo.PromoCommon,
+		PromoUnique: promoUniques,
+	})
 }
 
 func (h PromoHandler) update(c fiber.Ctx) error {

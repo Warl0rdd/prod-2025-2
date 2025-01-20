@@ -38,3 +38,10 @@ type UserProfileUpdate struct {
 	AvatarURL string `json:"avatar_url" example:"https://example.com/avatar.jpg" validate:"url"` // User's avatar URL
 	Password  string `json:"password" validate:"required,password" example:"Password1234"`       // Required, password must meet certain requirements: must has upper case letters, lower case letters and digits
 }
+
+type Feed struct {
+	Limit  int    `query:"limit"`
+	Offset int    `query:"offset"`
+	SortBy string `query:"sort_by"`
+	Active bool   `query:"active"`
+}

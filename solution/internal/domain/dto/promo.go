@@ -29,10 +29,10 @@ type PromoCreateResponse struct {
 }
 
 type PromoGetWithPaginationRequest struct {
-	Limit     int      `header:"limit"`
-	Offset    int      `header:"offset"`
-	SortBy    string   `header:"sort_by"`
-	Countries []string `header:"countries"`
+	Limit     int      `query:"limit"`
+	Offset    int      `query:"offset"`
+	SortBy    string   `query:"sort_by"`
+	Countries []string `query:"countries"`
 }
 
 type PromoGetWithPagination struct {
