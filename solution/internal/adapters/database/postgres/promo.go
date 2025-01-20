@@ -50,7 +50,6 @@ func (s *promoStorage) Create(ctx context.Context, promo entity.Promo) (*entity.
 }
 
 // GetByID is a method that returns an error and a pointer to a Promo instance by id.
-// TODO fix
 func (s *promoStorage) GetByID(ctx context.Context, id string) (*entity.Promo, error) {
 	var promo entity.Promo
 
