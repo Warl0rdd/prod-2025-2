@@ -30,15 +30,21 @@ func NewPromoService(promoStorage promoStorage, businessStorage businessStorage)
 }
 
 func (s *promoService) Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO dto.PromoCreate) (*entity.Promo, error) {
+	var activeFrom, activeUntil time.Time
+	var timeError error
+	if promoDTO.ActiveFrom != "" {
+		activeFrom, timeError = time.Parse("2006-01-02", promoDTO.ActiveFrom)
+		if timeError != nil {
+			return nil, timeError
+		}
+	}
+	if promoDTO.ActiveUntil != "" {
+		activeUntil, timeError = time.Parse("2006-01-02", promoDTO.ActiveUntil)
+		if timeError != nil {
+			return nil, timeError
+		}
+	}
 
-	activeFrom, timeError := time.Parse("2006-01-02", promoDTO.ActiveFrom)
-	if timeError != nil {
-		return nil, timeError
-	}
-	activeUntil, timeError := time.Parse("2006-01-02", promoDTO.ActiveUntil)
-	if timeError != nil {
-		return nil, timeError
-	}
 	var categories []entity.Category
 	var promoUniques []entity.PromoUnique
 	for _, category := range promoDTO.Target.Categories {
@@ -89,13 +95,19 @@ func (s *promoService) GetWithPagination(ctx context.Context, dto dto.PromoGetWi
 }
 
 func (s *promoService) Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.PromoCreate, id string) (*entity.Promo, error) {
-	activeFrom, timeError := time.Parse("2006-01-02", dto.ActiveFrom)
-	if timeError != nil {
-		return nil, timeError
+	var activeFrom, activeUntil time.Time
+	var timeError error
+	if dto.ActiveFrom != "" {
+		activeFrom, timeError = time.Parse("2006-01-02", dto.ActiveFrom)
+		if timeError != nil {
+			return nil, timeError
+		}
 	}
-	activeUntil, timeError := time.Parse("2006-01-02", dto.ActiveUntil)
-	if timeError != nil {
-		return nil, timeError
+	if dto.ActiveUntil != "" {
+		activeUntil, timeError = time.Parse("2006-01-02", dto.ActiveUntil)
+		if timeError != nil {
+			return nil, timeError
+		}
 	}
 
 	var categories []entity.Category

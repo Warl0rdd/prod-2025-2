@@ -43,6 +43,7 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 	var promoDTO dto.PromoCreate
 
 	if err := c.Bind().Body(&promoDTO); err != nil {
+		logger.Log.Error(err)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -50,13 +51,15 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 	}
 
 	if errValidate := h.validator.ValidateData(promoDTO); errValidate != nil {
+		logger.Log.Error(errValidate)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
-	if promoDTO.Mode != "COMMON" && promoDTO.Mode != "UNIQUE" {
+	if (promoDTO.Mode != "COMMON") && (promoDTO.Mode != "UNIQUE") {
+		logger.Log.Error("ERR COM OR UNIQUE")
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -64,6 +67,7 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 	}
 
 	if promoDTO.Mode == "UNIQUE" && (promoDTO.PromoUnique == nil || promoDTO.MaxCount != 1) {
+		logger.Log.Error("ERR UNIQUE")
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -71,6 +75,7 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 	}
 
 	if countryCode := countries.ByName(strings.ToUpper(promoDTO.Target.Country)); countryCode == countries.Unknown && promoDTO.Target.Country != "" {
+		logger.Log.Error("ERR COUNTRY")
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
