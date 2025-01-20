@@ -42,13 +42,6 @@ func NewPromoHandler(app *app.App) *PromoHandler {
 func (h PromoHandler) create(c fiber.Ctx) error {
 	var promoDTO dto.PromoCreate
 
-	if c.Locals("business") == nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPError{
-			Status:  "error",
-			Message: "Пользователь не авторизован.",
-		})
-	}
-
 	if err := c.Bind().Body(&promoDTO); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
 			Status:  "error",
@@ -77,7 +70,7 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 		})
 	}
 
-	if countryCode := countries.ByName(strings.ToUpper(promoDTO.Target.Country)); countryCode == countries.Unknown {
+	if countryCode := countries.ByName(strings.ToUpper(promoDTO.Target.Country)); countryCode == countries.Unknown && promoDTO.Target.Country != "" {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
