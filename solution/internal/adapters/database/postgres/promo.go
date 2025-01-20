@@ -24,7 +24,7 @@ func NewPromoStorage(db *gorm.DB) *promoStorage {
 func (s *promoStorage) Create(ctx context.Context, promo entity.Promo) (*entity.Promo, error) {
 	// Insert a promo (parent)'s entity
 	insertPromoQuery := s.db.WithContext(ctx).Raw(
-		"INSERT INTO promos (company_id, created_at, updated_at, active_from, active_until, description, image_url, max_count, mode, promo_common, age_from, age_unti, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING promo_id;",
+		"INSERT INTO promos (company_id, created_at, updated_at, active_from, active_until, description, image_url, max_count, mode, promo_common, age_from, age_until, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING promo_id;",
 		promo.CompanyID, promo.CreatedAt, promo.UpdatedAt, promo.ActiveFrom, promo.ActiveUntil, promo.Description, promo.ImageURL, promo.MaxCount, promo.Mode, promo.PromoCommon, promo.AgeFrom, promo.AgeUntil, promo.Country).Scan(&promo.PromoID)
 	if err := insertPromoQuery.Error; err != nil {
 		return nil, err
