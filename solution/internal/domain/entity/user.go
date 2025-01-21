@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"bytes"
 	"github.com/biter777/countries"
 	"golang.org/x/crypto/bcrypt"
 	"time"
@@ -27,5 +28,9 @@ func (user *User) SetPassword(password string) {
 
 // ComparePassword is a method to compare the password with the hashed password.
 func (user *User) ComparePassword(password string) error {
-	return bcrypt.CompareHashAndPassword(user.Password, []byte(password))
+	if bytes.Equal(user.Password, HashedPassword(password)) {
+		return nil
+	} else {
+		return bcrypt.ErrMismatchedHashAndPassword
+	}
 }
