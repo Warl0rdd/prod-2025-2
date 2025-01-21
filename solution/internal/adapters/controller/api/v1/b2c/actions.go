@@ -13,6 +13,7 @@ import (
 
 type ActionsService interface {
 	AddLike(ctx context.Context, userID, promoID string) error
+	DeleteLike(ctx context.Context, userID, promoID string) error
 }
 
 type ActionsHandler struct {
@@ -29,7 +30,7 @@ func NewActionsHandler(app *app.App) *ActionsHandler {
 	}
 }
 
-func (h ActionsHandler) AddLike(c fiber.Ctx) error {
+func (h ActionsHandler) addLike(c fiber.Ctx) error {
 	user := c.Locals("user").(*entity.User)
 	var likeDTO dto.AddLike
 
@@ -61,8 +62,41 @@ func (h ActionsHandler) AddLike(c fiber.Ctx) error {
 	})
 }
 
+func (h ActionsHandler) deleteLike(c fiber.Ctx) error {
+	user := c.Locals("user").(*entity.User)
+	var likeDTO dto.AddLike
+
+	if err := c.Bind().URI(&likeDTO); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if errValidate := h.validator.ValidateData(likeDTO); errValidate != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	err := h.actionsService.DeleteLike(c.Context(), user.ID, likeDTO.PromoID)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка сервера.",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(dto.HTTPResponse{
+		Status: "ok",
+	})
+}
+
 func (h ActionsHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	actionsGroup := router.Group("/user/promo")
 
-	actionsGroup.Post("/:id/like", h.AddLike, middleware)
+	actionsGroup.Post("/:id/like", h.addLike, middleware)
+	actionsGroup.Delete("/:id/like", h.deleteLike, middleware)
 }

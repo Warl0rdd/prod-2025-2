@@ -4,6 +4,7 @@ import "context"
 
 type actionsStorage interface {
 	AddLike(ctx context.Context, userID, promoID string) error
+	DeleteLike(ctx context.Context, userID, promoID string) error
 }
 
 type actionsService struct {
@@ -16,4 +17,8 @@ func NewActionsService(storage actionsStorage) *actionsService {
 
 func (s *actionsService) AddLike(ctx context.Context, userID, promoID string) error {
 	return s.storage.AddLike(ctx, userID, promoID)
+}
+
+func (s *actionsService) DeleteLike(ctx context.Context, userID, promoID string) error {
+	return s.storage.DeleteLike(ctx, userID, promoID)
 }
