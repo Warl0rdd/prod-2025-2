@@ -43,7 +43,7 @@ type PromoGetWithPagination struct {
 }
 
 type PromoGetByID struct {
-	ID string `uri:"id"`
+	ID string `uri:"id" validate:"required"`
 }
 
 type PromoDTO struct {
@@ -78,9 +78,10 @@ type PromoFeedRequest struct {
 	Active   string `query:"active"`
 }
 
-// PromoFeed TODO is_activated_by_user
-// PromoFeed TODO is_liked_by_user
-type PromoFeed struct {
+// PromoForUser TODO is_activated_by_user
+// PromoForUser TODO is_liked_by_user
+// PromoForUser DTO for user's feed a
+type PromoForUser struct {
 	PromoID     string `json:"promo_id"`
 	CompanyID   string `json:"company_id"`
 	CompanyName string `json:"company_name"`

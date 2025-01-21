@@ -285,7 +285,7 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo *en
 	return promo, query.Error
 }
 
-func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active string) ([]dto.PromoFeed, int64, error) {
+func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active string) ([]dto.PromoForUser, int64, error) {
 	query := `
 		SELECT p.promo_id,
 			   p.company_id,
@@ -370,10 +370,10 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 		}
 	}
 
-	var promos []dto.PromoFeed
+	var promos []dto.PromoForUser
 
 	for _, r := range results {
-		promos = append(promos, dto.PromoFeed{
+		promos = append(promos, dto.PromoForUser{
 			PromoID:     r.PromoID,
 			CompanyID:   r.BusinessID,
 			CompanyName: r.BusinessName,
@@ -396,4 +396,54 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 	}
 
 	return promos, total, nil
+}
+
+// GetByIdUser Get promo by ID for Users
+func (s *promoStorage) GetByIdUser(ctx context.Context, promoID string) (dto.PromoForUser, error) {
+	var promo dto.PromoForUser
+
+	query := `
+		SELECT p.promo_id,
+			   p.company_id,
+			   p.description,
+			   p.image_url,
+			   p.active,
+			   p.like_count,
+			   p.comment_count,
+			   b.name AS business_name,
+			   b.id   AS business_id
+		FROM promos p
+				 INNER JOIN businesses b ON b.id = p.company_id
+		WHERE p.promo_id = ?;`
+
+	type result struct {
+		PromoID      string
+		BusinessID   string
+		BusinessName string
+		Description  string
+		ImageURL     string
+		Active       bool
+		LikeCount    int
+		CommentCount int
+		CategoryName string
+	}
+
+	var queryResult result
+
+	if err := s.db.WithContext(ctx).Raw(query, promoID).Scan(&queryResult).Error; err != nil {
+		return promo, err
+	}
+
+	promo = dto.PromoForUser{
+		PromoID:     queryResult.PromoID,
+		CompanyID:   queryResult.BusinessID,
+		CompanyName: queryResult.BusinessName,
+		Description: queryResult.Description,
+		ImageURL:    queryResult.ImageURL,
+		Active:      queryResult.Active,
+		LikeCount:   queryResult.LikeCount,
+		UserCount:   queryResult.CommentCount,
+	}
+
+	return promo, nil
 }

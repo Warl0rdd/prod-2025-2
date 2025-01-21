@@ -192,6 +192,13 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 		})
 	}
 
+	if errValidate := h.validator.ValidateData(promoIdDTO); errValidate != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
 	promo, err := h.promoService.GetByID(c.Context(), promoIdDTO.ID)
 
 	if err != nil {
