@@ -17,8 +17,3 @@ type UserService interface {
 	GetByEmail(ctx context.Context, id string) (*entity.User, error)
 	Create(ctx context.Context, registerReq dto.UserRegister) (*entity.User, error)
 }
-
-type authUseсase struct {
-	tokenService TokenService
-	userService  UserService
-}

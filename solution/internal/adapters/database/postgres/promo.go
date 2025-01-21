@@ -5,9 +5,9 @@ import (
 	"github.com/biter777/countries"
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
-	"slices"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/entity"
+	"time"
 )
 
 // promoStorage is a struct that contains a pointer to a gorm.DB instance to interact with promo repository.
@@ -18,6 +18,26 @@ type promoStorage struct {
 // NewPromoStorage is a function that returns a new instance of promoStorage.
 func NewPromoStorage(db *gorm.DB) *promoStorage {
 	return &promoStorage{db: db}
+}
+
+// Проверка на уникальность категории
+func containsCategory(categories []entity.Category, category entity.Category) bool {
+	for _, c := range categories {
+		if c.CategoryID == category.CategoryID {
+			return true
+		}
+	}
+	return false
+}
+
+// Проверка на уникальность уникального промокода
+func containsPromoUnique(promoUniques []entity.PromoUnique, promoUnique entity.PromoUnique) bool {
+	for _, pu := range promoUniques {
+		if pu.PromoUniqueID == promoUnique.PromoUniqueID {
+			return true
+		}
+	}
+	return false
 }
 
 // Create is a method to create a new Promo in database.
@@ -81,7 +101,7 @@ func (s *promoStorage) GetByID(ctx context.Context, id string) (*entity.Promo, e
 	var results []result
 
 	// Выполнение запроса
-	if err := s.db.Raw(query, id).Scan(&results).Error; err != nil {
+	if err := s.db.WithContext(ctx).Raw(query, id).Scan(&results).Error; err != nil {
 		return nil, err
 	}
 
@@ -127,34 +147,133 @@ func (s *promoStorage) GetByID(ctx context.Context, id string) (*entity.Promo, e
 	return &promo, nil
 }
 
-// GetAll is a method that returns a slice of pointers to all Promo instances.
-func (s *promoStorage) GetAll(ctx context.Context, limit, offset int) ([]entity.Promo, error) {
-	var promos []entity.Promo
-	err := s.db.WithContext(ctx).Model(&entity.Promo{}).Limit(limit).Offset(offset).Find(&promos).Error
-	return promos, err
-}
+func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countriesSlice []countries.CountryCode) ([]entity.Promo, int64, error) {
+	var promosMap = make(map[string]*entity.Promo)
 
-func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int, sortBy string, countries []countries.CountryCode) ([]entity.Promo, int64, error) {
-	var promos []entity.Promo
-	var total int64
-	query := s.db.WithContext(ctx).Model(&entity.Promo{}).Limit(limit).Offset(offset).Order(sortBy).Find(&promos)
-	err := query.Error
-	s.db.WithContext(ctx).Model(&entity.Promo{}).Count(&total)
-	if len(countries) == 0 {
-		return promos, total, err
+	query := `
+		SELECT
+			p.promo_id, p.company_id, p.created_at, p.updated_at, p.active, p.active_from, p.active_until,
+			p.description, p.image_url, p.max_count, p.mode, p.like_count, p.used_count, p.promo_common,
+			p.age_from, p.age_until, p.country,
+			c.category_id AS category_id, c.name AS category_name,
+			pu.promo_unique_id AS promo_unique_id, pu.body AS promo_unique_body, pu.activated AS promo_unique_activated
+		FROM
+			promos p
+		LEFT JOIN
+			categories c ON p.promo_id = c.promo_id
+		LEFT JOIN
+			promo_uniques pu ON p.promo_id = pu.promo_id
+		WHERE
+			p.company_id = ? AND p.country IN ?
+		ORDER BY ` + sortBy + ` DESC LIMIT ? OFFSET ?
+	`
+
+	type result struct {
+		PromoID              string
+		CompanyID            string
+		CreatedAt            time.Time
+		UpdatedAt            time.Time
+		Active               bool
+		ActiveFrom           time.Time
+		ActiveUntil          time.Time
+		Description          string
+		ImageURL             string
+		MaxCount             int
+		Mode                 string
+		LikeCount            int
+		UsedCount            int
+		PromoCommon          string
+		AgeFrom              int
+		AgeUntil             int
+		Country              countries.CountryCode
+		CategoryID           *string
+		CategoryName         *string
+		PromoUniqueID        *string
+		PromoUniqueBody      *string
+		PromoUniqueActivated *bool
 	}
-	for i, promo := range promos {
-		if !slices.Contains(countries, promo.Country) {
-			promos = append(promos[:i], promos[i+1:]...)
+
+	var results []result
+
+	if err := s.db.WithContext(ctx).Raw(query, companyId, countriesSlice, limit, offset).Scan(&results).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Обработка результатов
+	for _, r := range results {
+		// Проверяем, есть ли уже Promo с данным PromoID
+		promo, exists := promosMap[r.PromoID]
+		if !exists {
+			// Создаем новый Promo
+			promo = &entity.Promo{
+				PromoID:     r.PromoID,
+				CompanyID:   r.CompanyID,
+				CreatedAt:   r.CreatedAt,
+				UpdatedAt:   r.UpdatedAt,
+				Active:      r.Active,
+				ActiveFrom:  r.ActiveFrom,
+				ActiveUntil: r.ActiveUntil,
+				Description: r.Description,
+				ImageURL:    r.ImageURL,
+				MaxCount:    r.MaxCount,
+				Mode:        r.Mode,
+				LikeCount:   r.LikeCount,
+				UsedCount:   r.UsedCount,
+				PromoCommon: r.PromoCommon,
+				AgeFrom:     r.AgeFrom,
+				AgeUntil:    r.AgeUntil,
+				Country:     r.Country,
+			}
+			promosMap[r.PromoID] = promo
+		}
+
+		// Добавляем категорию, если она есть и еще не добавлена
+		if r.CategoryID != nil {
+			category := entity.Category{
+				CategoryID: *r.CategoryID,
+				PromoID:    r.PromoID,
+				Name:       *r.CategoryName,
+			}
+
+			if !containsCategory(promo.Categories, category) {
+				promo.Categories = append(promo.Categories, category)
+			}
+		}
+
+		// Добавляем уникальный промокод, если он есть и еще не добавлен
+		if r.PromoUniqueID != nil {
+			promoUnique := entity.PromoUnique{
+				PromoUniqueID: *r.PromoUniqueID,
+				PromoID:       r.PromoID,
+				Body:          *r.PromoUniqueBody,
+				Activated:     *r.PromoUniqueActivated,
+			}
+
+			if !containsPromoUnique(promo.PromoUnique, promoUnique) {
+				promo.PromoUnique = append(promo.PromoUnique, promoUnique)
+			}
 		}
 	}
-	return promos, total, err
+
+	// Конвертируем мапу в срез
+	var promos []entity.Promo
+	for _, promo := range promosMap {
+		promos = append(promos, *promo)
+	}
+
+	// Получаем общее количество записей
+	var total int64
+	if err := s.db.WithContext(ctx).Raw("SELECT COUNT(*) FROM promos WHERE company_id = ?", companyId).Scan(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return promos, total, nil
 }
 
 // Update is a method to update an existing Promo in database.
-func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo *entity.Promo) (*entity.Promo, error) {
+func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo *entity.Promo, id string) (*entity.Promo, error) {
 	var oldPromo entity.Promo
-	s.db.WithContext(ctx).Model(&entity.Promo{}).Where("id = ?", promo.PromoID).First(&oldPromo)
+	s.db.WithContext(ctx).Model(&entity.Promo{}).Where("id = ?", id).First(&oldPromo)
 	if oldPromo.CompanyID != fiberCtx.Locals("business").(*entity.Business).ID {
 		return nil, errorz.Forbidden
 	}

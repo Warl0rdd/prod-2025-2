@@ -8,6 +8,7 @@ import (
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
+	"solution/internal/adapters/logger"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
@@ -19,7 +20,7 @@ import (
 type PromoService interface {
 	Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO dto.PromoCreate) (*entity.Promo, error)
 	GetByID(ctx context.Context, uuid string) (*entity.Promo, error)
-	GetWithPagination(ctx context.Context, dto dto.PromoGetWithPagination) ([]entity.Promo, int64, error)
+	GetWithPagination(ctx context.Context, companyId string, dto dto.PromoGetWithPagination) ([]entity.Promo, int64, error)
 	Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.PromoCreate, id string) (*entity.Promo, error)
 }
 
@@ -38,6 +39,7 @@ func NewPromoHandler(app *app.App) *PromoHandler {
 	}
 }
 
+// Создание промо
 func (h PromoHandler) create(c fiber.Ctx) error {
 	var promoDTO dto.PromoCreate
 
@@ -89,8 +91,11 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 	})
 }
 
+// Получение промо с пагинацией
 func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 	var promoRequestDTO dto.PromoGetWithPaginationRequest
+
+	company := c.Locals("business").(*entity.Business)
 
 	if err := c.Bind().Query(&promoRequestDTO); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
@@ -110,6 +115,8 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 		})
 	}
 
+	logger.Log.Info(promoRequestDTO)
+
 	promoDTO := dto.PromoGetWithPagination{
 		Limit:  promoRequestDTO.Limit,
 		Offset: promoRequestDTO.Offset,
@@ -117,10 +124,12 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 	}
 
 	for _, country := range promoRequestDTO.Countries {
-		promoDTO.Countries = append(promoDTO.Countries, countries.ByName(strings.ToUpper(country)))
+		promoDTO.Countries = append(promoDTO.Countries, countries.ByName(country))
 	}
 
-	promos, total, err := h.promoService.GetWithPagination(c.Context(), promoDTO)
+	logger.Log.Info(promoDTO)
+
+	promos, total, err := h.promoService.GetWithPagination(c.Context(), company.ID, promoDTO)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
 			Status:  "error",
@@ -128,11 +137,50 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 		})
 	}
 
+	var promoDTOs []dto.PromoDTO
+
+	for _, promo := range promos {
+
+		var categories, promoUniques []string
+
+		for _, category := range promo.Categories {
+			categories = append(categories, category.Name)
+		}
+
+		for _, promoUnique := range promo.PromoUnique {
+			promoUniques = append(promoUniques, promoUnique.Body)
+		}
+
+		promoDTOs = append(promoDTOs, dto.PromoDTO{
+			PromoID:     promo.PromoID,
+			CompanyID:   promo.CompanyID,
+			CompanyName: company.Name,
+			Target: dto.Target{
+				AgeFrom:    promo.AgeFrom,
+				AgeUntil:   promo.AgeUntil,
+				Country:    promo.Country.Alpha2(),
+				Categories: categories,
+			},
+			Active:      promo.Active,
+			ActiveFrom:  promo.ActiveFrom,
+			ActiveUntil: promo.ActiveUntil,
+			Description: promo.Description,
+			ImageURL:    promo.ImageURL,
+			MaxCount:    promo.MaxCount,
+			Mode:        promo.Mode,
+			LikeCount:   promo.LikeCount,
+			UsedCount:   promo.UsedCount,
+			PromoCommon: promo.PromoCommon,
+			PromoUnique: promoUniques,
+		})
+	}
+
 	c.Append("X-Total-Count", strconv.FormatInt(total, 10))
 
-	return c.Status(fiber.StatusOK).JSON(promos)
+	return c.Status(fiber.StatusOK).JSON(promoDTOs)
 }
 
+// Получение промо по ID
 func (h PromoHandler) getByID(c fiber.Ctx) error {
 	var promoIdDTO dto.PromoGetByID
 	business := c.Locals("business").(*entity.Business)
@@ -194,6 +242,7 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 	})
 }
 
+// Обновление промо
 func (h PromoHandler) update(c fiber.Ctx) error {
 	type Params struct {
 		ID string `uri:"id"`

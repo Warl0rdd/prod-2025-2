@@ -13,8 +13,8 @@ import (
 type promoStorage interface {
 	Create(ctx context.Context, promo entity.Promo) (*entity.Promo, error)
 	GetByID(ctx context.Context, id string) (*entity.Promo, error)
-	Update(ctx context.Context, fiberCtx fiber.Ctx, promo *entity.Promo) (*entity.Promo, error)
-	GetWithPagination(ctx context.Context, limit, offset int, sortBy string, countries []countries.CountryCode) ([]entity.Promo, int64, error)
+	Update(ctx context.Context, fiberCtx fiber.Ctx, promo *entity.Promo, id string) (*entity.Promo, error)
+	GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countries []countries.CountryCode) ([]entity.Promo, int64, error)
 }
 
 type promoService struct {
@@ -90,8 +90,8 @@ func (s *promoService) GetByID(ctx context.Context, id string) (*entity.Promo, e
 	return s.promoStorage.GetByID(ctx, id)
 }
 
-func (s *promoService) GetWithPagination(ctx context.Context, dto dto.PromoGetWithPagination) ([]entity.Promo, int64, error) {
-	return s.promoStorage.GetWithPagination(ctx, dto.Limit, dto.Offset, dto.SortBy, dto.Countries)
+func (s *promoService) GetWithPagination(ctx context.Context, companyId string, dto dto.PromoGetWithPagination) ([]entity.Promo, int64, error) {
+	return s.promoStorage.GetWithPagination(ctx, dto.Limit, dto.Offset, dto.SortBy, companyId, dto.Countries)
 }
 
 func (s *promoService) Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.PromoCreate, id string) (*entity.Promo, error) {
@@ -139,5 +139,5 @@ func (s *promoService) Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.P
 		PromoUnique: promoUniques,
 	}
 
-	return s.promoStorage.Update(ctx, fiberCtx, &promo)
+	return s.promoStorage.Update(ctx, fiberCtx, &promo, id)
 }

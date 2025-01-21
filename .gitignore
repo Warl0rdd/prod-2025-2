@@ -904,3 +904,4 @@ FodyWeavers.xsd
 
 # End of https://www.toptal.com/developers/gitignore/api/go,python,c++,java,kotlin,intellij+all,visualstudiocode,visualstudio,node,vuejs
 /solution/openapi.yaml
+/qodana.yaml

@@ -32,7 +32,7 @@ type PromoGetWithPaginationRequest struct {
 	Limit     int      `query:"limit"`
 	Offset    int      `query:"offset"`
 	SortBy    string   `query:"sort_by"`
-	Countries []string `query:"countries"`
+	Countries []string `query:"country"`
 }
 
 type PromoGetWithPagination struct {
