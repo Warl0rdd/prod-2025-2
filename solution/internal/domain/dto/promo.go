@@ -11,7 +11,7 @@ type PromoCreate struct {
 	ActiveUntil string   `json:"active_until"`
 	Description string   `json:"description" validate:"required"`
 	ImageURL    string   `json:"image_url" validate:"omitempty,url"`
-	MaxCount    int      `json:"max_count"`
+	MaxCount    int      `json:"max_count" validate:"required"`
 	Mode        string   `json:"mode"`
 	PromoCommon string   `json:"promo_common"`
 	PromoUnique []string `json:"promo_unique"`
@@ -69,4 +69,24 @@ type PromoDTO struct {
 
 type PromoGetWithPaginationResponse struct {
 	Promos []PromoCreate
+}
+
+type PromoFeedRequest struct {
+	Limit    int    `query:"limit"`
+	Offset   int    `query:"offset"`
+	Category string `query:"category"`
+	Active   string `query:"active"`
+}
+
+// PromoFeed TODO is_activated_by_user
+// PromoFeed TODO is_liked_by_user
+type PromoFeed struct {
+	PromoID     string `json:"promo_id"`
+	CompanyID   string `json:"company_id"`
+	CompanyName string `json:"company_name"`
+	Description string `json:"description"`
+	ImageURL    string `json:"image_url"`
+	Active      bool   `json:"active"`
+	LikeCount   int    `json:"like_count"`
+	UserCount   int    `json:"user_count"`
 }

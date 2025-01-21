@@ -33,6 +33,9 @@ func Setup(app *app.App) {
 	promoHandler.Setup(apiV1, middlewareHandler.IsAuthenticated())
 
 	// Setup user routes
-	userHandler := b2c.NewUserHandler(app)
-	userHandler.Setup(apiV1, middlewareHandler.IsAuthenticated())
+	userAuthHandler := b2c.NewUserHandler(app)
+	userAuthHandler.Setup(apiV1, middlewareHandler.IsAuthenticated())
+
+	userPromoHandler := b2c.NewUserPromoHandler(app)
+	userPromoHandler.Setup(apiV1, middlewareHandler.IsAuthenticated())
 }

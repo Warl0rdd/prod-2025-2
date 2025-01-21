@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 	"solution/internal/domain/common/errorz"
+	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"time"
 )
@@ -284,6 +285,115 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo *en
 	return promo, query.Error
 }
 
-func (s *promoStorage) getFeed() {
+func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active string) ([]dto.PromoFeed, int64, error) {
+	query := `
+		SELECT p.promo_id,
+			   p.company_id,
+			   p.description,
+			   p.image_url,
+			   p.active,
+			   p.like_count,
+			   p.comment_count,
+			   c.name AS category_name,
+			   b.name AS business_name,
+			   b.id   AS business_id
+		FROM promos p
+				 INNER JOIN categories c ON c.name = ? AND c.promo_id = p.promo_id
+				 INNER JOIN businesses b ON b.id = p.company_id
+		WHERE p.age_from <= ?
+		  AND p.age_until >= ?
+		  AND p.country = ?
+		LIMIT ? OFFSET ?`
 
+	queryCount := `
+		SELECT COUNT(*)
+		FROM promos p
+				 INNER JOIN categories c ON c.name = ? AND c.promo_id = p.promo_id
+				 INNER JOIN businesses b ON b.id = p.company_id
+		WHERE p.age_from <= ?
+		  AND p.age_until >= ?
+		  AND p.country = ?`
+
+	if active != "" {
+		query = `
+			SELECT p.promo_id,
+				   p.company_id,
+				   p.description,
+				   p.image_url,
+				   p.active,
+				   p.like_count,
+				   p.comment_count,
+				   c.name AS category_name,
+				   b.name AS business_name,
+				   b.id   AS business_id
+			FROM promos p
+					 INNER JOIN categories c ON c.name = ? AND c.promo_id = p.promo_id
+					 INNER JOIN businesses b ON b.id = p.company_id
+			WHERE p.age_from <= ?
+			  AND p.age_until >= ?
+			  AND p.country = ?
+			  AND p.active = ?
+			LIMIT ? OFFSET ?`
+
+		queryCount = `
+		SELECT COUNT(*)
+		FROM promos p
+				 INNER JOIN categories c ON c.name = ? AND c.promo_id = p.promo_id
+				 INNER JOIN businesses b ON b.id = p.company_id
+		WHERE p.age_from <= ?
+		  AND p.age_until >= ?
+		  AND p.country = ?
+          AND p.active = ?`
+	}
+
+	type result struct {
+		PromoID      string
+		BusinessID   string
+		BusinessName string
+		Description  string
+		ImageURL     string
+		Active       bool
+		LikeCount    int
+		CommentCount int
+		CategoryName string
+	}
+
+	var results []result
+
+	if active != "" {
+		if err := s.db.WithContext(ctx).Raw(query, category, age, age, country, active, limit, offset).Scan(&results).Error; err != nil {
+			return nil, 0, err
+		}
+	} else {
+		if err := s.db.WithContext(ctx).Raw(query, category, age, age, country, limit, offset).Scan(&results).Error; err != nil {
+			return nil, 0, err
+		}
+	}
+
+	var promos []dto.PromoFeed
+
+	for _, r := range results {
+		promos = append(promos, dto.PromoFeed{
+			PromoID:     r.PromoID,
+			CompanyID:   r.BusinessID,
+			CompanyName: r.BusinessName,
+			Description: r.Description,
+			ImageURL:    r.ImageURL,
+			Active:      r.Active,
+			LikeCount:   r.LikeCount,
+		})
+	}
+
+	var total int64
+	if active != "" {
+		if err := s.db.WithContext(ctx).Raw(queryCount, category, age, age, country, active).Scan(&total).Error; err != nil {
+			return nil, 0, err
+		}
+	} else {
+		if err := s.db.WithContext(ctx).Raw(queryCount, category, age, age, country).Scan(&total).Error; err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return promos, total, nil
 }

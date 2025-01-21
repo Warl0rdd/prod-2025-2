@@ -11,17 +11,18 @@ type Promo struct {
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
 
-	Active      bool          `json:"-" gorm:"default:true"`
-	ActiveFrom  time.Time     `json:"active_from"`
-	ActiveUntil time.Time     `json:"active_until"`
-	Description string        `json:"description" gorm:"not null"`
-	ImageURL    string        `json:"image_url"`
-	MaxCount    int           `json:"max_count" gorm:"not null"`
-	Mode        string        `json:"mode" gorm:"not null"`
-	LikeCount   int           `json:"like_count" gorm:"default:0"`
-	UsedCount   int           `json:"used_count" gorm:"default:0"`
-	PromoCommon string        `json:"promo_common"`
-	PromoUnique []PromoUnique `json:"promo_unique;" gorm:"foreignKey:PromoID"`
+	Active       bool          `json:"-" gorm:"default:true"`
+	ActiveFrom   time.Time     `json:"active_from"`
+	ActiveUntil  time.Time     `json:"active_until"`
+	Description  string        `json:"description" gorm:"not null"`
+	ImageURL     string        `json:"image_url"`
+	MaxCount     int           `json:"max_count" gorm:"not null"`
+	Mode         string        `json:"mode" gorm:"not null"`
+	LikeCount    int           `json:"like_count" gorm:"default:0"`
+	UsedCount    int           `json:"used_count" gorm:"default:0"`
+	CommentCount int           `json:"comment_count" gorm:"default:0"`
+	PromoCommon  string        `json:"promo_common"`
+	PromoUnique  []PromoUnique `json:"promo_unique;" gorm:"foreignKey:PromoID"`
 
 	AgeFrom    int                   `json:"age_from"`
 	AgeUntil   int                   `json:"age_until"`

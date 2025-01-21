@@ -15,6 +15,7 @@ type promoStorage interface {
 	GetByID(ctx context.Context, id string) (*entity.Promo, error)
 	Update(ctx context.Context, fiberCtx fiber.Ctx, promo *entity.Promo, id string) (*entity.Promo, error)
 	GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countries []countries.CountryCode) ([]entity.Promo, int64, error)
+	GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active string) ([]dto.PromoFeed, int64, error)
 }
 
 type promoService struct {
@@ -140,4 +141,8 @@ func (s *promoService) Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.P
 	}
 
 	return s.promoStorage.Update(ctx, fiberCtx, &promo, id)
+}
+
+func (s *promoService) GetFeed(ctx context.Context, user *entity.User, dto dto.PromoFeedRequest) ([]dto.PromoFeed, int64, error) {
+	return s.promoStorage.GetFeed(ctx, user.Age, dto.Limit, dto.Offset, user.Country, dto.Category, dto.Active)
 }
