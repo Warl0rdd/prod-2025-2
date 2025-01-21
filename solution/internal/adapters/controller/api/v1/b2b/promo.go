@@ -44,35 +44,35 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 	var promoDTO dto.PromoCreate
 
 	if err := c.Bind().Body(&promoDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if errValidate := h.validator.ValidateData(promoDTO); errValidate != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if (promoDTO.Mode != "COMMON") && (promoDTO.Mode != "UNIQUE") {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if promoDTO.Mode == "UNIQUE" && (promoDTO.PromoUnique == nil || promoDTO.MaxCount != 1) {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if countryCode := countries.ByName(strings.ToUpper(promoDTO.Target.Country)); countryCode == countries.Unknown && promoDTO.Target.Country != "" {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -80,7 +80,7 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 
 	promo, err := h.promoService.Create(c.Context(), c, promoDTO)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -98,7 +98,7 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 	company := c.Locals("business").(*entity.Business)
 
 	if err := c.Bind().Query(&promoRequestDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -109,7 +109,7 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 	}
 
 	if promoRequestDTO.SortBy != "active_from" && promoRequestDTO.SortBy != "active_until" {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -131,7 +131,7 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 
 	promos, total, err := h.promoService.GetWithPagination(c.Context(), company.ID, promoDTO)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -186,14 +186,14 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 	business := c.Locals("business").(*entity.Business)
 
 	if err := c.Bind().URI(&promoIdDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if errValidate := h.validator.ValidateData(promoIdDTO); errValidate != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -202,14 +202,14 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 	promo, err := h.promoService.GetByID(c.Context(), promoIdDTO.ID)
 
 	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusNotFound).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
 	}
 
 	if promo.CompanyID != business.ID {
-		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Промокод не принадлежит этой компании.",
 		})
@@ -259,14 +259,14 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 	var promoDTO dto.PromoCreate
 
 	if err := c.Bind().Body(&promoDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if err := c.Bind().URI(&params); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -275,21 +275,21 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 	newPromo, err := h.promoService.Update(c.Context(), c, promoDTO, params.ID)
 
 	if errors.Is(err, errorz.Forbidden) {
-		return c.Status(fiber.StatusForbidden).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusForbidden).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Промокод не принадлежит этой компании.",
 		})
 	}
 
 	if errors.Is(err, errorz.NotFound) {
-		return c.Status(fiber.StatusNotFound).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusNotFound).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Промокод не найден.",
 		})
 	}
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})

@@ -50,18 +50,11 @@ func (h MiddlewareHandler) IsAuthenticated() fiber.Handler {
 		business, businessFetchErr := auth.GetBusinessFromJWT(authHeader, "access", c.Context(), h.businessService.GetByID)
 
 		if (fetchErr != nil && businessFetchErr != nil) || (user == nil && business == nil) {
-			return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPError{
+			return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
 				Status:  "error",
 				Message: "Пользователь не авторизован.",
 			})
 		}
-
-		//if !config.RoleHasRights(user.Role, requiredRights) {
-		//	return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-		//		"success": false,
-		//		"message": errorz.Forbidden,
-		//	})
-		//}
 
 		if fetchErr == nil && user != nil {
 			c.Locals("user", user)

@@ -12,13 +12,15 @@ type User struct {
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
 
-	Email     string                `json:"email" gorm:"index"`
+	Email     string                `json:"email" gorm:"uniqueIndex"`
 	Password  []byte                `json:"-"`
 	Name      string                `json:"name"`
 	Surname   string                `json:"surname"`
 	AvatarURL string                `json:"avatar_url"`
 	Age       int                   `json:"age"`
 	Country   countries.CountryCode `json:"country"`
+
+	Actions []Actions `json:"-" gorm:"foreignKey:UserID"`
 }
 
 // SetPassword is a method to hash the password before storing it.

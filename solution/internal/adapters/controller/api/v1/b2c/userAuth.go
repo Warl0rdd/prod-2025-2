@@ -47,14 +47,14 @@ func (h UserHandler) register(c fiber.Ctx) error {
 	var userDTO dto.UserRegister
 
 	if err := c.Bind().Body(&userDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if errValidate := h.validator.ValidateData(userDTO); errValidate != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -62,7 +62,7 @@ func (h UserHandler) register(c fiber.Ctx) error {
 
 	user, errCreate := h.userService.Create(c.Context(), userDTO)
 	if errors.Is(errCreate, errorz.EmailTaken) {
-		return c.Status(fiber.StatusConflict).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusConflict).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Такой email уже зарегистрирован.",
 		})
@@ -70,7 +70,7 @@ func (h UserHandler) register(c fiber.Ctx) error {
 
 	// Other errors
 	if errCreate != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка при создании пользователя.",
 		})
@@ -78,7 +78,7 @@ func (h UserHandler) register(c fiber.Ctx) error {
 
 	tokens, tokensErr := h.tokenService.GenerateAuthTokens(c.Context(), user.ID)
 	if tokensErr != nil || tokens == nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка при генерации токенов.",
 		})
@@ -95,14 +95,14 @@ func (h UserHandler) login(c fiber.Ctx) error {
 	var userDTO dto.UserLogin
 
 	if err := c.Bind().Body(&userDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if errValidate := h.validator.ValidateData(userDTO); errValidate != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -110,7 +110,7 @@ func (h UserHandler) login(c fiber.Ctx) error {
 
 	user, errFetch := h.userService.GetByEmail(c.Context(), userDTO.Email)
 	if errFetch != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Неверный email или пароль.",
 		})
@@ -118,7 +118,7 @@ func (h UserHandler) login(c fiber.Ctx) error {
 
 	passErr := user.ComparePassword(userDTO.Password)
 	if passErr != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Неверный email или пароль.",
 		})
@@ -126,7 +126,7 @@ func (h UserHandler) login(c fiber.Ctx) error {
 
 	tokens, tokensErr := h.tokenService.GenerateAuthTokens(c.Context(), user.ID)
 	if tokensErr != nil || tokens == nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "failed to generate auth tokens",
 		})
@@ -161,14 +161,14 @@ func (h UserHandler) updateProfile(c fiber.Ctx) error {
 	var userDTO dto.UserProfileUpdate
 
 	if err := c.Bind().Body(&userDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if errValidate := h.validator.ValidateData(userDTO); errValidate != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -181,7 +181,7 @@ func (h UserHandler) updateProfile(c fiber.Ctx) error {
 
 	updatedUser, errUpdate := h.userService.Update(c.Context(), user)
 	if errUpdate != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка при обновлении профиля.",
 		})

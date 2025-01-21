@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/entity"
@@ -21,8 +22,15 @@ func NewUserStorage(db *gorm.DB) *userStorage {
 // Create is a method to create a new User in database.
 func (s *userStorage) Create(ctx context.Context, user entity.User) (*entity.User, error) {
 	err := s.db.WithContext(ctx).Create(&user).Error
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return nil, errorz.EmailTaken
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == "23505" {
+				return nil, errorz.EmailTaken
+			}
+		} else {
+			return nil, err
+		}
 	}
 	return &user, err
 }

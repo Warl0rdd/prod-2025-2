@@ -45,14 +45,14 @@ func (h BusinessHandler) register(c fiber.Ctx) error {
 	var businessDTO dto.BusinessRegister
 
 	if err := c.Bind().Body(&businessDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if errValidate := h.validator.ValidateData(businessDTO); errValidate != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -60,7 +60,7 @@ func (h BusinessHandler) register(c fiber.Ctx) error {
 
 	business, errCreate := h.businessService.Create(c.Context(), businessDTO)
 	if errCreate != nil {
-		return c.Status(fiber.StatusConflict).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusConflict).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Такой email уже зарегистрирован.",
 		})
@@ -68,7 +68,7 @@ func (h BusinessHandler) register(c fiber.Ctx) error {
 
 	tokens, tokensErr := h.tokenService.GenerateAuthTokens(c.Context(), business.ID)
 	if tokensErr != nil || tokens == nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "failed to generate auth tokens",
 		})
@@ -86,14 +86,14 @@ func (h BusinessHandler) login(c fiber.Ctx) error {
 	var businessDTO dto.BusinessLogin
 
 	if err := c.Bind().Body(&businessDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if errValidate := h.validator.ValidateData(businessDTO); errValidate != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -101,7 +101,7 @@ func (h BusinessHandler) login(c fiber.Ctx) error {
 
 	business, errFetch := h.businessService.GetByEmail(c.Context(), businessDTO.Email)
 	if errFetch != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Неверный email или пароль.",
 		})
@@ -109,7 +109,7 @@ func (h BusinessHandler) login(c fiber.Ctx) error {
 
 	passErr := business.ComparePassword(businessDTO.Password)
 	if passErr != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Неверный email или пароль.",
 		})
@@ -117,7 +117,7 @@ func (h BusinessHandler) login(c fiber.Ctx) error {
 
 	tokens, tokensErr := h.tokenService.GenerateAuthTokens(c.Context(), business.ID)
 	if tokensErr != nil || tokens == nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "failed to generate auth tokens",
 		})

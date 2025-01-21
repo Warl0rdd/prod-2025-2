@@ -36,7 +36,7 @@ func (h UserPromoHandler) GetFeed(c fiber.Ctx) error {
 	var requestDTO dto.PromoFeedRequest
 
 	if err := c.Bind().Query(&requestDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
@@ -47,7 +47,7 @@ func (h UserPromoHandler) GetFeed(c fiber.Ctx) error {
 	promos, total, err := h.PromoService.GetFeed(c.Context(), user, requestDTO)
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})
@@ -62,21 +62,21 @@ func (h UserPromoHandler) GetPromoByID(c fiber.Ctx) error {
 	var requestDTO dto.PromoGetByID
 
 	if err := c.Bind().URI(&requestDTO); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if errValidate := h.validator.ValidateData(requestDTO); errValidate != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
 	}
 
 	if user := c.Locals("user"); user == nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Пользователь не авторизован.",
 		})
@@ -85,7 +85,7 @@ func (h UserPromoHandler) GetPromoByID(c fiber.Ctx) error {
 	promo, err := h.PromoService.GetByIdUser(c.Context(), requestDTO.ID)
 
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPError{
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: err.Error(),
 		})

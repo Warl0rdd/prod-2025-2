@@ -38,4 +38,7 @@ func Setup(app *app.App) {
 
 	userPromoHandler := b2c.NewUserPromoHandler(app)
 	userPromoHandler.Setup(apiV1, middlewareHandler.IsAuthenticated())
+
+	userActionsHandler := b2c.NewActionsHandler(app)
+	userActionsHandler.Setup(apiV1, middlewareHandler.IsAuthenticated())
 }

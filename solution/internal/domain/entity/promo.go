@@ -28,6 +28,7 @@ type Promo struct {
 	AgeUntil   int                   `json:"age_until"`
 	Country    countries.CountryCode `json:"country"`
 	Categories []Category            `json:"categories" gorm:"foreignKey:PromoID"`
+	Actions    []Actions             `json:"-" gorm:"foreignKey:PromoID"`
 }
 
 type PromoUnique struct {
