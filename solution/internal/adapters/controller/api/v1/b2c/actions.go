@@ -16,6 +16,7 @@ type ActionsService interface {
 	DeleteLike(ctx context.Context, userID, promoID string) error
 	AddComment(ctx context.Context, userID, promoID, text string) error
 	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error)
+	GetCommentById(ctx context.Context, commentID, promoID string) (dto.Comment, error)
 }
 
 type ActionsHandler struct {
@@ -171,6 +172,35 @@ func (h ActionsHandler) getComments(ctx fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(comments)
 }
 
+func (h ActionsHandler) getCommentById(ctx fiber.Ctx) error {
+	var getCommentDTO dto.GetCommentById
+
+	if err := ctx.Bind().URI(&getCommentDTO); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if errValidate := h.validator.ValidateData(getCommentDTO); errValidate != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	comment, err := h.actionsService.GetCommentById(ctx.Context(), getCommentDTO.ID, getCommentDTO.CommentID)
+
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка сервера.",
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(comment)
+}
+
 func (h ActionsHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	actionsGroup := router.Group("/user/promo")
 
@@ -178,4 +208,5 @@ func (h ActionsHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	actionsGroup.Delete("/:id/like", h.deleteLike, middleware)
 	actionsGroup.Post("/:id/comments", h.addComment, middleware)
 	actionsGroup.Get("/:id/comments", h.getComments, middleware)
+	actionsGroup.Get("/:id/comments/:comment_id", h.getCommentById, middleware)
 }

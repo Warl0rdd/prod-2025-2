@@ -12,8 +12,8 @@ type Promo struct {
 	UpdatedAt time.Time `json:"-"`
 
 	Active       bool          `json:"-" gorm:"default:true"`
-	ActiveFrom   time.Time     `json:"active_from"`
-	ActiveUntil  time.Time     `json:"active_until"`
+	ActiveFrom   time.Time     `json:"active_from" gorm:"default:now()"`
+	ActiveUntil  time.Time     `json:"active_until" gorm:"default:'2525-01-22 13:53:19.177440 +00:00'"` // очень очень далёкая дата
 	Description  string        `json:"description" gorm:"not null"`
 	ImageURL     string        `json:"image_url"`
 	MaxCount     int           `json:"max_count" gorm:"not null"`

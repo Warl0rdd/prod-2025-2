@@ -79,7 +79,6 @@ type PromoFeedRequest struct {
 }
 
 // PromoForUser TODO is_activated_by_user
-// PromoForUser TODO is_liked_by_user
 // PromoForUser DTO for user's feed a
 type PromoForUser struct {
 	PromoID       string `json:"promo_id"`

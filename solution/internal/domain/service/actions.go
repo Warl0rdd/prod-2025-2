@@ -10,6 +10,7 @@ type actionsStorage interface {
 	DeleteLike(ctx context.Context, userID, promoID string) error
 	AddComment(ctx context.Context, userID, promoID, text string) error
 	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error)
+	GetCommentById(ctx context.Context, promoID, commentID string) (dto.Comment, error)
 }
 
 type actionsService struct {
@@ -34,4 +35,8 @@ func (s *actionsService) AddComment(ctx context.Context, userID, promoID, text s
 
 func (s *actionsService) GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error) {
 	return s.storage.GetComments(ctx, promoID, limit, offset)
+}
+
+func (s *actionsService) GetCommentById(ctx context.Context, commentID, promoID string) (dto.Comment, error) {
+	return s.storage.GetCommentById(ctx, commentID, promoID)
 }

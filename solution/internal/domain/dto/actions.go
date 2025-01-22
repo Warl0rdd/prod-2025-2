@@ -27,3 +27,8 @@ type Author struct {
 	Surname   string `json:"surname"`
 	AvatarURL string `json:"avatar_url"`
 }
+
+type GetCommentById struct {
+	ID        string `uri:"id" validate:"required"` // promo id
+	CommentID string `uri:"comment_id" validate:"required"`
+}

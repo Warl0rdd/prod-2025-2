@@ -169,3 +169,45 @@ func (s *actionsStorage) GetComments(ctx context.Context, promoID string, limit,
 
 	return comments, nil
 }
+
+func (s *actionsStorage) GetCommentById(ctx context.Context, promoID, commentID string) (dto.Comment, error) {
+	query := `
+		SELECT u.name,
+			   u.surname,
+			   u.avatar_url,
+			   c.comment_id,
+			   c.text,
+			   c.created_at
+		FROM comments c
+				 INNER JOIN users u ON u.id = c.user_id
+		WHERE c.comment_id = ?
+		  AND c.promo_id = ?`
+
+	type result struct {
+		Name      string
+		Surname   string
+		AvatarURL string
+		CommentID string
+		Text      string
+		CreatedAt time.Time
+	}
+
+	var r result
+
+	err := s.db.WithContext(ctx).Raw(query, commentID, promoID).Scan(&r).Error
+
+	if err != nil {
+		return dto.Comment{}, err
+	}
+
+	return dto.Comment{
+		ID:   r.CommentID,
+		Text: r.Text,
+		Date: r.CreatedAt.Format(time.RFC3339),
+		Author: dto.Author{
+			Name:      r.Name,
+			Surname:   r.Surname,
+			AvatarURL: r.AvatarURL,
+		},
+	}, nil
+}
