@@ -1,11 +1,15 @@
 package service
 
-import "context"
+import (
+	"context"
+	"solution/internal/domain/dto"
+)
 
 type actionsStorage interface {
 	AddLike(ctx context.Context, userID, promoID string) error
 	DeleteLike(ctx context.Context, userID, promoID string) error
 	AddComment(ctx context.Context, userID, promoID, text string) error
+	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error)
 }
 
 type actionsService struct {
@@ -26,4 +30,8 @@ func (s *actionsService) DeleteLike(ctx context.Context, userID, promoID string)
 
 func (s *actionsService) AddComment(ctx context.Context, userID, promoID, text string) error {
 	return s.storage.AddComment(ctx, userID, promoID, text)
+}
+
+func (s *actionsService) GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error) {
+	return s.storage.GetComments(ctx, promoID, limit, offset)
 }

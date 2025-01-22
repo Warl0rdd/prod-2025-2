@@ -15,6 +15,7 @@ type ActionsService interface {
 	AddLike(ctx context.Context, userID, promoID string) error
 	DeleteLike(ctx context.Context, userID, promoID string) error
 	AddComment(ctx context.Context, userID, promoID, text string) error
+	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error)
 }
 
 type ActionsHandler struct {
@@ -134,10 +135,47 @@ func (h ActionsHandler) addComment(c fiber.Ctx) error {
 	})
 }
 
+func (h ActionsHandler) getComments(ctx fiber.Ctx) error {
+	var getCommentsDTO dto.GetComments
+
+	if err := ctx.Bind().URI(&getCommentsDTO); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if err := ctx.Bind().Query(&getCommentsDTO); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if errValidate := h.validator.ValidateData(getCommentsDTO); errValidate != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	comments, err := h.actionsService.GetComments(ctx.Context(), getCommentsDTO.ID, getCommentsDTO.Limit, getCommentsDTO.Offset)
+
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка сервера.",
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(comments)
+}
+
 func (h ActionsHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	actionsGroup := router.Group("/user/promo")
 
 	actionsGroup.Post("/:id/like", h.addLike, middleware)
 	actionsGroup.Delete("/:id/like", h.deleteLike, middleware)
 	actionsGroup.Post("/:id/comments", h.addComment, middleware)
+	actionsGroup.Get("/:id/comments", h.getComments, middleware)
 }

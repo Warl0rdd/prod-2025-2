@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"gorm.io/gorm"
+	"solution/internal/domain/dto"
 	"time"
 )
 
@@ -119,4 +120,52 @@ func (s *actionsStorage) AddComment(ctx context.Context, userID, promoID, text s
 	}
 
 	return nil
+}
+
+func (s *actionsStorage) GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error) {
+	query := `
+		SELECT u.name,
+			   u.surname,
+			   u.avatar_url,
+			   c.comment_id,
+			   c.text,
+			   c.created_at
+		FROM comments c
+				 INNER JOIN users u ON u.id = c.user_id
+		WHERE c.promo_id = ?
+		LIMIT ? OFFSET ?`
+
+	type result struct {
+		Name      string
+		Surname   string
+		AvatarURL string
+		CommentID string
+		Text      string
+		CreatedAt time.Time
+	}
+
+	var results []result
+
+	err := s.db.WithContext(ctx).Raw(query, promoID, limit, offset).Scan(&results).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	comments := make([]dto.Comment, 0, len(results))
+
+	for _, r := range results {
+		comments = append(comments, dto.Comment{
+			ID:   r.CommentID,
+			Text: r.Text,
+			Date: r.CreatedAt.Format(time.RFC3339),
+			Author: dto.Author{
+				Name:      r.Name,
+				Surname:   r.Surname,
+				AvatarURL: r.AvatarURL,
+			},
+		})
+	}
+
+	return comments, nil
 }
