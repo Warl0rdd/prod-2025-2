@@ -32,3 +32,9 @@ type GetCommentById struct {
 	ID        string `uri:"id" validate:"required"` // promo id
 	CommentID string `uri:"comment_id" validate:"required"`
 }
+
+type UpdateComment struct {
+	ID        string `uri:"id" validate:"required"` // promo id
+	CommentID string `uri:"comment_id" validate:"required"`
+	Text      string `json:"text" validate:"required"`
+}

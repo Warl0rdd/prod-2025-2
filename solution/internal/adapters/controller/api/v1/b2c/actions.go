@@ -2,10 +2,12 @@ package b2c
 
 import (
 	"context"
+	"errors"
 	"github.com/gofiber/fiber/v3"
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
+	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"solution/internal/domain/service"
@@ -17,6 +19,7 @@ type ActionsService interface {
 	AddComment(ctx context.Context, userID, promoID, text string) error
 	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error)
 	GetCommentById(ctx context.Context, commentID, promoID string) (dto.Comment, error)
+	UpdateComment(ctx context.Context, promoID, commentID, userID, text string) (dto.Comment, error)
 }
 
 type ActionsHandler struct {
@@ -201,6 +204,50 @@ func (h ActionsHandler) getCommentById(ctx fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(comment)
 }
 
+func (h ActionsHandler) updateComment(c fiber.Ctx) error {
+	user := c.Locals("user").(*entity.User)
+	var commentDTO dto.UpdateComment
+
+	if err := c.Bind().URI(&commentDTO); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if err := c.Bind().Body(&commentDTO); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if errValidate := h.validator.ValidateData(commentDTO); errValidate != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	comment, err := h.actionsService.UpdateComment(c.Context(), commentDTO.ID, commentDTO.CommentID, user.ID, commentDTO.Text)
+
+	if err != nil {
+		if errors.Is(err, errorz.Forbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Недостаточно прав.",
+			})
+		} else {
+			return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Ошибка сервера.",
+			})
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(comment)
+}
+
 func (h ActionsHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	actionsGroup := router.Group("/user/promo")
 
@@ -209,4 +256,5 @@ func (h ActionsHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	actionsGroup.Post("/:id/comments", h.addComment, middleware)
 	actionsGroup.Get("/:id/comments", h.getComments, middleware)
 	actionsGroup.Get("/:id/comments/:comment_id", h.getCommentById, middleware)
+	actionsGroup.Put("/:id/comments/:comment_id", h.updateComment, middleware)
 }

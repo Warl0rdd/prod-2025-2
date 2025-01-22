@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"gorm.io/gorm"
+	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"time"
 )
@@ -203,6 +204,64 @@ func (s *actionsStorage) GetCommentById(ctx context.Context, promoID, commentID 
 	return dto.Comment{
 		ID:   r.CommentID,
 		Text: r.Text,
+		Date: r.CreatedAt.Format(time.RFC3339),
+		Author: dto.Author{
+			Name:      r.Name,
+			Surname:   r.Surname,
+			AvatarURL: r.AvatarURL,
+		},
+	}, nil
+}
+
+func (s *actionsStorage) UpdateComment(ctx context.Context, promoID, commentID, userID, text string) (dto.Comment, error) {
+	querySelect := `
+		SELECT u.name,
+			   u.surname,
+			   u.avatar_url,
+			   u.id,
+			   c.comment_id,
+			   c.text,
+			   c.created_at
+		FROM comments c
+				 INNER JOIN users u ON u.id = c.user_id
+		WHERE c.comment_id = ?
+		  AND c.promo_id = ?`
+
+	queryUpdate := `UPDATE comments SET text = ? WHERE comment_id = ? AND promo_id = ?`
+
+	type result struct {
+		Name      string
+		Surname   string
+		AvatarURL string
+		ID        string
+		CommentID string
+		Text      string
+		CreatedAt time.Time
+	}
+
+	var r result
+
+	err := s.db.WithContext(ctx).Raw(querySelect, commentID, promoID).Scan(&r).Error
+	if err != nil {
+		return dto.Comment{}, err
+	}
+
+	if r.ID != userID {
+		return dto.Comment{}, errorz.Forbidden
+	}
+
+	query := s.db.WithContext(ctx).Exec(queryUpdate, text, commentID, promoID)
+	if queryErr := query.Error; queryErr != nil {
+		return dto.Comment{}, err
+	}
+
+	if query.RowsAffected == 0 {
+		return dto.Comment{}, errorz.NotFound
+	}
+
+	return dto.Comment{
+		ID:   r.CommentID,
+		Text: text,
 		Date: r.CreatedAt.Format(time.RFC3339),
 		Author: dto.Author{
 			Name:      r.Name,

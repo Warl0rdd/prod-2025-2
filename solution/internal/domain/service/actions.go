@@ -11,6 +11,7 @@ type actionsStorage interface {
 	AddComment(ctx context.Context, userID, promoID, text string) error
 	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error)
 	GetCommentById(ctx context.Context, promoID, commentID string) (dto.Comment, error)
+	UpdateComment(ctx context.Context, promoID, commentID, userID, text string) (dto.Comment, error)
 }
 
 type actionsService struct {
@@ -39,4 +40,8 @@ func (s *actionsService) GetComments(ctx context.Context, promoID string, limit,
 
 func (s *actionsService) GetCommentById(ctx context.Context, commentID, promoID string) (dto.Comment, error) {
 	return s.storage.GetCommentById(ctx, commentID, promoID)
+}
+
+func (s *actionsService) UpdateComment(ctx context.Context, promoID, commentID, userID, text string) (dto.Comment, error) {
+	return s.storage.UpdateComment(ctx, promoID, commentID, userID, text)
 }
