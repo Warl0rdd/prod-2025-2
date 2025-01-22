@@ -270,3 +270,32 @@ func (s *actionsStorage) UpdateComment(ctx context.Context, promoID, commentID, 
 		},
 	}, nil
 }
+
+func (s *actionsStorage) DeleteComment(ctx context.Context, promoID, commentID, userID string) error {
+	querySelect := `SELECT user_id FROM comments WHERE comment_id = ? AND promo_id = ?`
+
+	queryDelete := `DELETE FROM comments WHERE comment_id = ? AND promo_id = ?`
+
+	var authorID string
+
+	err := s.db.WithContext(ctx).Raw(querySelect, commentID, promoID).Scan(&authorID).Error
+	if err != nil {
+		return err
+	}
+
+	if authorID != userID {
+		return errorz.Forbidden
+	}
+
+	query := s.db.WithContext(ctx).Exec(queryDelete, commentID, promoID)
+	if queryErr := query.Error; queryErr != nil {
+		return queryErr
+	}
+
+	if query.RowsAffected == 0 {
+		return errorz.NotFound
+	}
+
+	return nil
+
+}

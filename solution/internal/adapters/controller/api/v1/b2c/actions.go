@@ -20,6 +20,7 @@ type ActionsService interface {
 	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error)
 	GetCommentById(ctx context.Context, commentID, promoID string) (dto.Comment, error)
 	UpdateComment(ctx context.Context, promoID, commentID, userID, text string) (dto.Comment, error)
+	DeleteComment(ctx context.Context, promoID, commentID, userID string) error
 }
 
 type ActionsHandler struct {
@@ -248,6 +249,50 @@ func (h ActionsHandler) updateComment(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(comment)
 }
 
+func (h ActionsHandler) deleteComment(c fiber.Ctx) error {
+	user := c.Locals("user").(*entity.User)
+	var commentDTO dto.DeleteCommentById
+
+	if err := c.Bind().URI(&commentDTO); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if errValidate := h.validator.ValidateData(commentDTO); errValidate != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	err := h.actionsService.DeleteComment(c.Context(), commentDTO.ID, commentDTO.CommentID, user.ID)
+
+	if err != nil {
+		if errors.Is(err, errorz.Forbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Недостаточно прав.",
+			})
+		} else if errors.Is(err, errorz.NotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Комментарий не найден.",
+			})
+		} else {
+			return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Ошибка сервера.",
+			})
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(dto.HTTPResponse{
+		Status: "ok",
+	})
+}
+
 func (h ActionsHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	actionsGroup := router.Group("/user/promo")
 
@@ -257,4 +302,5 @@ func (h ActionsHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	actionsGroup.Get("/:id/comments", h.getComments, middleware)
 	actionsGroup.Get("/:id/comments/:comment_id", h.getCommentById, middleware)
 	actionsGroup.Put("/:id/comments/:comment_id", h.updateComment, middleware)
+	actionsGroup.Delete("/:id/comments/:comment_id", h.deleteComment, middleware)
 }
