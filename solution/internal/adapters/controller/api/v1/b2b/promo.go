@@ -71,6 +71,13 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 		})
 	}
 
+	if (promoDTO.Mode == "COMMON" && promoDTO.PromoUnique != nil) || (promoDTO.Mode == "UNIQUE" && promoDTO.PromoCommon != "") {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
 	if countryCode := countries.ByName(strings.ToUpper(promoDTO.Target.Country)); countryCode == countries.Unknown && promoDTO.Target.Country != "" {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
