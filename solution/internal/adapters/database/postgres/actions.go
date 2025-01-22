@@ -105,9 +105,18 @@ func (s *actionsStorage) DeleteLike(ctx context.Context, userID, promoID string)
 
 func (s *actionsStorage) AddComment(ctx context.Context, userID, promoID, text string) error {
 	query := `INSERT INTO comments (created_at, promo_id, user_id, text) VALUES (?, ?, ?, ?)`
+
+	queryIncrement := `UPDATE promos SET comment_count = comment_count + 1 WHERE promo_id = ?`
+
 	err := s.db.WithContext(ctx).Exec(query, time.Now(), promoID, userID, text).Error
 	if err != nil {
 		return err
 	}
+
+	err = s.db.WithContext(ctx).Exec(queryIncrement, promoID).Error
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
