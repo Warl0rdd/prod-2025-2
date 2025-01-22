@@ -169,7 +169,7 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 		LEFT JOIN
 			promo_uniques pu ON p.promo_id = pu.promo_id
 		WHERE
-			p.company_id = ? AND p.country IN ?
+			p.company_id = ? AND p.country IN ? OR p.country = null
 		LIMIT ? OFFSET ?`
 
 	if sortBy != "" {
@@ -187,7 +187,7 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 			LEFT JOIN
 				promo_uniques pu ON p.promo_id = pu.promo_id
 			WHERE
-				p.company_id = ? AND p.country IN ?
+				p.company_id = ? AND p.country IN ? OR p.country = null
 			ORDER BY ` + sortBy + ` DESC LIMIT ? OFFSET ?`
 	}
 
@@ -292,7 +292,7 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 
 	// Получаем общее количество записей
 	var total int64
-	if err := s.db.WithContext(ctx).Raw("SELECT COUNT(*) FROM promos WHERE company_id = ? AND country IN ?", companyId, countriesSlice).Scan(&total).Error; err != nil {
+	if err := s.db.WithContext(ctx).Raw("SELECT COUNT(*) FROM promos WHERE company_id = ? AND country IN ? OR country = null", companyId, countriesSlice).Scan(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
