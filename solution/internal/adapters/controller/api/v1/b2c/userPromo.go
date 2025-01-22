@@ -14,7 +14,7 @@ import (
 
 type PromoService interface {
 	GetFeed(ctx context.Context, user *entity.User, dto dto.PromoFeedRequest) ([]dto.PromoForUser, int64, error)
-	GetByIdUser(ctx context.Context, promoID string) (dto.PromoForUser, error)
+	GetByIdUser(ctx context.Context, promoID, userID string) (dto.PromoForUser, error)
 }
 
 type UserPromoHandler struct {
@@ -44,6 +44,13 @@ func (h UserPromoHandler) GetFeed(c fiber.Ctx) error {
 
 	user := c.Locals("user").(*entity.User)
 
+	if user == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Пользователь не авторизован.",
+		})
+	}
+
 	promos, total, err := h.PromoService.GetFeed(c.Context(), user, requestDTO)
 
 	if err != nil {
@@ -61,6 +68,8 @@ func (h UserPromoHandler) GetFeed(c fiber.Ctx) error {
 func (h UserPromoHandler) GetPromoByID(c fiber.Ctx) error {
 	var requestDTO dto.PromoGetByID
 
+	user := c.Locals("user").(*entity.User)
+
 	if err := c.Bind().URI(&requestDTO); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
@@ -75,14 +84,14 @@ func (h UserPromoHandler) GetPromoByID(c fiber.Ctx) error {
 		})
 	}
 
-	if user := c.Locals("user"); user == nil {
+	if user == nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Пользователь не авторизован.",
 		})
 	}
 
-	promo, err := h.PromoService.GetByIdUser(c.Context(), requestDTO.ID)
+	promo, err := h.PromoService.GetByIdUser(c.Context(), requestDTO.ID, user.ID)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{

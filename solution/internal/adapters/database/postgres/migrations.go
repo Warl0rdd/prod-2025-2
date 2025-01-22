@@ -11,4 +11,5 @@ var Migrations = []interface{}{
 	&entity.PromoUnique{},
 	&entity.Category{},
 	&entity.Actions{},
+	&entity.Comment{},
 }

@@ -13,12 +13,16 @@ import (
 
 // promoStorage is a struct that contains a pointer to a gorm.DB instance to interact with promo repository.
 type promoStorage struct {
-	db *gorm.DB
+	db             *gorm.DB
+	actionsStorage *actionsStorage
 }
 
 // NewPromoStorage is a function that returns a new instance of promoStorage.
 func NewPromoStorage(db *gorm.DB) *promoStorage {
-	return &promoStorage{db: db}
+	return &promoStorage{
+		db:             db,
+		actionsStorage: NewActionsStorage(db),
+	}
 }
 
 // Проверка на уникальность категории
@@ -285,7 +289,7 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo *en
 	return promo, query.Error
 }
 
-func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active string) ([]dto.PromoForUser, int64, error) {
+func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active, userID string) ([]dto.PromoForUser, int64, error) {
 	query := `
 		SELECT p.promo_id,
 			   p.company_id,
@@ -374,13 +378,14 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 
 	for _, r := range results {
 		promos = append(promos, dto.PromoForUser{
-			PromoID:     r.PromoID,
-			CompanyID:   r.BusinessID,
-			CompanyName: r.BusinessName,
-			Description: r.Description,
-			ImageURL:    r.ImageURL,
-			Active:      r.Active,
-			LikeCount:   r.LikeCount,
+			PromoID:       r.PromoID,
+			CompanyID:     r.BusinessID,
+			CompanyName:   r.BusinessName,
+			Description:   r.Description,
+			ImageURL:      r.ImageURL,
+			Active:        r.Active,
+			IsLikedByUser: s.actionsStorage.IsLikedByUser(ctx, userID, r.PromoID),
+			LikeCount:     r.LikeCount,
 		})
 	}
 
@@ -399,7 +404,7 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 }
 
 // GetByIdUser Get promo by ID for Users
-func (s *promoStorage) GetByIdUser(ctx context.Context, promoID string) (dto.PromoForUser, error) {
+func (s *promoStorage) GetByIdUser(ctx context.Context, promoID, userID string) (dto.PromoForUser, error) {
 	var promo dto.PromoForUser
 
 	query := `
@@ -435,14 +440,15 @@ func (s *promoStorage) GetByIdUser(ctx context.Context, promoID string) (dto.Pro
 	}
 
 	promo = dto.PromoForUser{
-		PromoID:     queryResult.PromoID,
-		CompanyID:   queryResult.BusinessID,
-		CompanyName: queryResult.BusinessName,
-		Description: queryResult.Description,
-		ImageURL:    queryResult.ImageURL,
-		Active:      queryResult.Active,
-		LikeCount:   queryResult.LikeCount,
-		UserCount:   queryResult.CommentCount,
+		PromoID:       queryResult.PromoID,
+		CompanyID:     queryResult.BusinessID,
+		CompanyName:   queryResult.BusinessName,
+		Description:   queryResult.Description,
+		ImageURL:      queryResult.ImageURL,
+		Active:        queryResult.Active,
+		LikeCount:     queryResult.LikeCount,
+		IsLikedByUser: s.actionsStorage.IsLikedByUser(ctx, userID, promoID),
+		UsedCount:     queryResult.CommentCount,
 	}
 
 	return promo, nil

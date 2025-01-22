@@ -29,6 +29,7 @@ type Promo struct {
 	Country    countries.CountryCode `json:"country"`
 	Categories []Category            `json:"categories" gorm:"foreignKey:PromoID"`
 	Actions    []Actions             `json:"-" gorm:"foreignKey:PromoID"`
+	Comments   []Comment             `json:"-" gorm:"foreignKey:PromoID"`
 }
 
 type PromoUnique struct {
