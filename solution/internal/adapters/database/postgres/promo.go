@@ -170,8 +170,26 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 			promo_uniques pu ON p.promo_id = pu.promo_id
 		WHERE
 			p.company_id = ? AND p.country IN ?
-		ORDER BY ` + sortBy + ` DESC LIMIT ? OFFSET ?
-	`
+		LIMIT ? OFFSET ?`
+
+	if sortBy != "" {
+		query = `
+			SELECT
+				p.promo_id, p.company_id, p.created_at, p.updated_at, p.active, p.active_from, p.active_until,
+				p.description, p.image_url, p.max_count, p.mode, p.like_count, p.used_count, p.promo_common,
+				p.age_from, p.age_until, p.country,
+				c.category_id AS category_id, c.name AS category_name,
+				pu.promo_unique_id AS promo_unique_id, pu.body AS promo_unique_body, pu.activated AS promo_unique_activated
+			FROM
+				promos p
+			LEFT JOIN
+				categories c ON p.promo_id = c.promo_id
+			LEFT JOIN
+				promo_uniques pu ON p.promo_id = pu.promo_id
+			WHERE
+				p.company_id = ? AND p.country IN ?
+			ORDER BY ` + sortBy + ` DESC LIMIT ? OFFSET ?`
+	}
 
 	type result struct {
 		PromoID              string
@@ -200,8 +218,14 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 
 	var results []result
 
-	if err := s.db.WithContext(ctx).Raw(query, companyId, countriesSlice, limit, offset).Scan(&results).Error; err != nil {
-		return nil, 0, err
+	if sortBy != "" {
+		if err := s.db.WithContext(ctx).Raw(query, companyId, countriesSlice, sortBy, limit, offset).Scan(&results).Error; err != nil {
+			return nil, 0, err
+		}
+	} else {
+		if err := s.db.WithContext(ctx).Raw(query, companyId, countriesSlice, limit, offset).Scan(&results).Error; err != nil {
+			return nil, 0, err
+		}
 	}
 
 	// Обработка результатов
