@@ -292,7 +292,7 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 
 	// Получаем общее количество записей
 	var total int64
-	if err := s.db.WithContext(ctx).Raw("SELECT COUNT(*) FROM promos WHERE company_id = ?", companyId).Scan(&total).Error; err != nil {
+	if err := s.db.WithContext(ctx).Raw("SELECT COUNT(*) FROM promos WHERE company_id = ? AND country IN ?", companyId, countriesSlice).Scan(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
