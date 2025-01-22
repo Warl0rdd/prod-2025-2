@@ -115,7 +115,7 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 		promoRequestDTO.Limit = 10
 	}
 
-	if promoRequestDTO.SortBy != "active_from" && promoRequestDTO.SortBy != "active_until" {
+	if promoRequestDTO.SortBy != "active_from" && promoRequestDTO.SortBy != "active_until" && promoRequestDTO.SortBy != "" {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
