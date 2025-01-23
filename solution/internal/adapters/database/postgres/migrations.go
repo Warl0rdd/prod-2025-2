@@ -10,6 +10,6 @@ var Migrations = []interface{}{
 	&entity.Promo{},
 	&entity.PromoUnique{},
 	&entity.Category{},
-	&entity.Actions{},
+	&entity.Likes{},
 	&entity.Comment{},
 }

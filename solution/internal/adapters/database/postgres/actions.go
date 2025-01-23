@@ -19,12 +19,12 @@ func NewActionsStorage(db *gorm.DB) *actionsStorage {
 func (s *actionsStorage) IsLikedByUser(ctx context.Context, userID, promoID string) bool {
 	query := `
 		SELECT COUNT(*)
-		FROM actions a
-				 INNER JOIN promos p ON p.promo_id = a.promo_id
-				 INNER JOIN users u ON u.id = a.user_id
+		FROM likes l
+				 INNER JOIN promos p ON p.promo_id = l.promo_id
+				 INNER JOIN users u ON u.id = l.user_id
 		WHERE u.id = ?
 		  AND p.promo_id = ?
-		  AND a."like" = true`
+		  AND l."like" = true`
 
 	var total int64
 	s.db.WithContext(ctx).Raw(query, userID, promoID).Scan(&total)
@@ -35,15 +35,25 @@ func (s *actionsStorage) IsLikedByUser(ctx context.Context, userID, promoID stri
 func (s *actionsStorage) AddLike(ctx context.Context, userID, promoID string) error {
 	querySelect := `
 		SELECT COUNT(*)
-		FROM actions a
-				 INNER JOIN promos p ON p.promo_id = a.promo_id
-				 INNER JOIN users u ON u.id = a.user_id
+		FROM likes l
+				 INNER JOIN promos p ON p.promo_id = l.promo_id
+				 INNER JOIN users u ON u.id = l.user_id
 		WHERE u.id = ?
 		  AND p.promo_id = ?`
 
-	queryInsert := `INSERT INTO actions (user_id, promo_id, "like") VALUES (?, ?, true)`
+	queryInsert := `INSERT INTO likes (user_id, promo_id, "like") VALUES (?, ?, true)`
 
-	queryUpdate := `UPDATE actions SET "like" = true WHERE user_id = ? AND promo_id = ?`
+	queryUpdate := `
+		WITH updated_likes AS (
+			UPDATE likes
+				SET "like" = TRUE
+				WHERE like_id = ?
+					AND "like" = FALSE
+				RETURNING promo_id
+		)
+		UPDATE promos
+		SET like_count = like_count + 1
+		WHERE promo_id IN (SELECT promo_id FROM updated_likes)`
 
 	queryIncrement := `UPDATE promos SET like_count = like_count + 1 WHERE promo_id = ?`
 
@@ -55,15 +65,14 @@ func (s *actionsStorage) AddLike(ctx context.Context, userID, promoID string) er
 		if err != nil {
 			return err
 		}
+		if err = s.db.WithContext(ctx).Exec(queryIncrement, promoID).Error; err != nil {
+			return err
+		}
 	} else {
 		err := s.db.WithContext(ctx).Exec(queryUpdate, userID, promoID).Error
 		if err != nil {
 			return err
 		}
-	}
-
-	if err := s.db.WithContext(ctx).Exec(queryIncrement, promoID).Error; err != nil {
-		return err
 	}
 
 	return nil
@@ -72,21 +81,23 @@ func (s *actionsStorage) AddLike(ctx context.Context, userID, promoID string) er
 func (s *actionsStorage) DeleteLike(ctx context.Context, userID, promoID string) error {
 	querySelect := `
 		SELECT COUNT(*)
-		FROM actions a
-				 INNER JOIN promos p ON p.promo_id = a.promo_id
-				 INNER JOIN users u ON u.id = a.user_id
+		FROM likes l
+				 INNER JOIN promos p ON p.promo_id = l.promo_id
+				 INNER JOIN users u ON u.id = l.user_id
 		WHERE u.id = ?
 		  AND p.promo_id = ?
-		  AND a."like" = true?`
+		  AND l."like" = true`
 
-	queryInsert := `INSERT INTO actions (user_id, promo_id, "like") VALUES (?, ?, false)`
+	queryInsert := `INSERT INTO likes (user_id, promo_id, "like") VALUES (?, ?, false)`
 
-	queryUpdate := `UPDATE actions SET "like" = false WHERE user_id = ? AND promo_id = ?`
+	queryUpdate := `UPDATE likes SET "like" = false WHERE user_id = ? AND promo_id = ?`
 
 	queryDecrement := `UPDATE promos SET like_count = like_count - 1 WHERE promo_id = ?`
 
+	var total int64
+
 	// if actions record doesn't exist
-	if rowsAffected := s.db.WithContext(ctx).Exec(querySelect, userID, promoID).RowsAffected; rowsAffected == 0 {
+	if _ = s.db.WithContext(ctx).Exec(querySelect, userID, promoID).Scan(&total); total == 0 {
 		err := s.db.WithContext(ctx).Exec(queryInsert, userID, promoID).Error
 		if err != nil {
 			return err

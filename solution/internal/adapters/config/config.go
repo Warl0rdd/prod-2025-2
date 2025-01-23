@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -15,6 +16,7 @@ import (
 
 type Config struct {
 	Database *gorm.DB
+	Redis    *redis.Client
 }
 
 func initConfig() {
@@ -85,7 +87,19 @@ func Configure() *Config {
 	}
 
 	logger.Log.Info("Database initialized")
+
+	logger.Log.Info("Initializing redis...")
+	redisAddress := fmt.Sprintf("%s:%s", os.Getenv("REDIS_HOST"), os.Getenv("REDIS_PORT"))
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     redisAddress,
+		Password: "",
+		DB:       0,
+	})
+	logger.Log.Info("Redis initialized")
+
 	return &Config{
 		Database: database,
+		Redis:    redisClient,
 	}
 }

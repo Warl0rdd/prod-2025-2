@@ -20,7 +20,7 @@ type User struct {
 	Age       int                   `json:"age"`
 	Country   countries.CountryCode `json:"country"`
 
-	Actions  []Actions `json:"-" gorm:"foreignKey:UserID"`
+	Actions  []Likes   `json:"-" gorm:"foreignKey:UserID"`
 	Comments []Comment `json:"-" gorm:"foreignKey:UserID"`
 }
 
