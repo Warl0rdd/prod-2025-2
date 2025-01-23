@@ -20,8 +20,9 @@ type User struct {
 	Age       int                   `json:"age"`
 	Country   countries.CountryCode `json:"country"`
 
-	Actions  []Likes   `json:"-" gorm:"foreignKey:UserID"`
-	Comments []Comment `json:"-" gorm:"foreignKey:UserID"`
+	Actions     []Likes      `json:"-" gorm:"foreignKey:UserID"`
+	Comments    []Comment    `json:"-" gorm:"foreignKey:UserID"`
+	Activations []Activation `json:"-" gorm:"foreignKey:UserID"`
 }
 
 // SetPassword is a method to hash the password before storing it.

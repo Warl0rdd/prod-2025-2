@@ -172,7 +172,7 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 			p.company_id = ?`
 
 	if len(countriesSlice) > 0 {
-		query += ` AND (p.country IN ? OR p.country IS NULL OR p.country = 0)`
+		query += ` AND (p.country IN ? OR p.country = 0)`
 	}
 
 	if sortBy != "" {

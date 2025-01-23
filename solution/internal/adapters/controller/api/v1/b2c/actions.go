@@ -7,6 +7,8 @@ import (
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
+	"solution/internal/adapters/database/redis"
+	"solution/internal/adapters/logger"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
@@ -21,6 +23,7 @@ type ActionsService interface {
 	GetCommentById(ctx context.Context, commentID, promoID string) (dto.Comment, error)
 	UpdateComment(ctx context.Context, promoID, commentID, userID, text string) (dto.Comment, error)
 	DeleteComment(ctx context.Context, promoID, commentID, userID string) error
+	Activate(ctx context.Context, user *entity.User, promoID string) (string, error)
 }
 
 type ActionsHandler struct {
@@ -30,9 +33,11 @@ type ActionsHandler struct {
 
 func NewActionsHandler(app *app.App) *ActionsHandler {
 	actionsStorage := postgres.NewActionsStorage(app.DB)
+	activationStorage := postgres.NewActivationStorage(app.DB)
+	activationRedisStorage := redis.NewActivationStorage(app.Redis)
 
 	return &ActionsHandler{
-		actionsService: service.NewActionsService(actionsStorage),
+		actionsService: service.NewActionsService(actionsStorage, activationStorage, activationRedisStorage),
 		validator:      app.Validator,
 	}
 }
@@ -293,6 +298,50 @@ func (h ActionsHandler) deleteComment(c fiber.Ctx) error {
 	})
 }
 
+func (h ActionsHandler) activate(c fiber.Ctx) error {
+	user := c.Locals("user").(*entity.User)
+	var activateDTO dto.Activate
+
+	if err := c.Bind().URI(&activateDTO); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if err := h.validator.ValidateData(activateDTO); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	promo, err := h.actionsService.Activate(c.Context(), user, activateDTO.ID)
+
+	if err != nil {
+		if errors.Is(err, errorz.Forbidden) {
+			return c.Status(fiber.StatusForbidden).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Доступ запрещен.",
+			})
+		} else if errors.Is(err, errorz.NotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Промо не найдено.",
+			})
+
+		} else {
+			logger.Log.Error(err.Error())
+			return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Ошибка сервера.",
+			})
+		}
+	}
+
+	return c.Status(fiber.StatusOK).JSON(dto.ActivateResponse{Promo: promo})
+}
+
 func (h ActionsHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	actionsGroup := router.Group("/user/promo")
 
@@ -303,4 +352,5 @@ func (h ActionsHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	actionsGroup.Get("/:id/comments/:comment_id", h.getCommentById, middleware)
 	actionsGroup.Put("/:id/comments/:comment_id", h.updateComment, middleware)
 	actionsGroup.Delete("/:id/comments/:comment_id", h.deleteComment, middleware)
+	actionsGroup.Post("/:id/activate", h.activate, middleware)
 }

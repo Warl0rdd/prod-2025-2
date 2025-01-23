@@ -47,8 +47,11 @@ services:
 
   af:
     image: lodthe/prod-backend-antifraud
+    container_name: af
     ports:
-      - '127.0.0.1:9090:9090'
+      - '9090:9090'
+    expose:
+      - '9090'
     environment:
       - SERVER_PORT=9090
       - CACHE_DURATION_MS=5000

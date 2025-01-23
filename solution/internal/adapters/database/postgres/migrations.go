@@ -12,4 +12,5 @@ var Migrations = []interface{}{
 	&entity.Category{},
 	&entity.Likes{},
 	&entity.Comment{},
+	&entity.Activation{},
 }

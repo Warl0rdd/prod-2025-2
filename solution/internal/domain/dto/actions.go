@@ -43,3 +43,11 @@ type UpdateComment struct {
 	CommentID string `uri:"comment_id" validate:"required"`
 	Text      string `json:"text" validate:"required"`
 }
+
+type Activate struct {
+	ID string `uri:"id" validate:"required"` // promo id
+}
+
+type ActivateResponse struct {
+	Promo string `json:"promo"`
+}

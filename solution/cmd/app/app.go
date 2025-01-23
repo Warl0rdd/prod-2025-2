@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/gofiber/fiber/v3"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"gorm.io/gorm"
 	"os"
@@ -14,6 +15,7 @@ import (
 type App struct {
 	Fiber     *fiber.App
 	DB        *gorm.DB
+	Redis     *redis.Client
 	Validator *validator.Validator
 }
 
@@ -33,6 +35,7 @@ func New(config *config.Config) *App {
 	return &App{
 		Fiber:     fiberApp,
 		DB:        config.Database,
+		Redis:     config.Redis,
 		Validator: validator.New(),
 	}
 }
