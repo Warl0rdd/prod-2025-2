@@ -51,15 +51,18 @@ func (s *promoService) Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO 
 
 	var categories []entity.Category
 	var promoUniques []entity.PromoUnique
-	for _, category := range promoDTO.Target.Categories {
-		categories = append(categories, entity.Category{
-			Name: category,
-		})
-	}
-	for _, promoUnique := range promoDTO.PromoUnique {
-		promoUniques = append(promoUniques, entity.PromoUnique{
-			Body: promoUnique,
-		})
+
+	if promoDTO.Target != nil {
+		for _, category := range promoDTO.Target.Categories {
+			categories = append(categories, entity.Category{
+				Name: category,
+			})
+		}
+		for _, promoUnique := range promoDTO.PromoUnique {
+			promoUniques = append(promoUniques, entity.PromoUnique{
+				Body: promoUnique,
+			})
+		}
 	}
 
 	company := fiberCTX.Locals("business").(*entity.Business)
@@ -75,10 +78,13 @@ func (s *promoService) Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO 
 		Mode:        promoDTO.Mode,
 		PromoCommon: promoDTO.PromoCommon,
 		PromoUnique: promoUniques,
-		AgeFrom:     promoDTO.Target.AgeFrom,
-		AgeUntil:    promoDTO.Target.AgeUntil,
-		Country:     countries.ByName(strings.ToUpper(promoDTO.Target.Country)),
 		Categories:  categories,
+	}
+
+	if promoDTO.Target != nil {
+		promo.Country = countries.ByName(strings.ToUpper(promoDTO.Target.Country))
+		promo.AgeFrom = promoDTO.Target.AgeFrom
+		promo.AgeUntil = promoDTO.Target.AgeUntil
 	}
 
 	company.Promos = append(company.Promos, promo)
@@ -116,21 +122,20 @@ func (s *promoService) Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.P
 
 	var categories []entity.Category
 	var promoUniques []entity.PromoUnique
-	for _, category := range dto.Target.Categories {
-		categories = append(categories, entity.Category{
-			Name: category,
-		})
-	}
-	for _, promoUnique := range dto.PromoUnique {
-		promoUniques = append(promoUniques, entity.PromoUnique{
-			Body: promoUnique,
-		})
+	if dto.Target != nil {
+		for _, category := range dto.Target.Categories {
+			categories = append(categories, entity.Category{
+				Name: category,
+			})
+		}
+		for _, promoUnique := range dto.PromoUnique {
+			promoUniques = append(promoUniques, entity.PromoUnique{
+				Body: promoUnique,
+			})
+		}
 	}
 
 	promo := entity.Promo{
-		AgeFrom:     dto.Target.AgeFrom,
-		AgeUntil:    dto.Target.AgeUntil,
-		Country:     countries.ByName(strings.ToUpper(dto.Target.Country)),
 		Categories:  categories,
 		Active:      true,
 		ActiveFrom:  activeFrom,
@@ -141,6 +146,12 @@ func (s *promoService) Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.P
 		Mode:        dto.Mode,
 		PromoCommon: dto.PromoCommon,
 		PromoUnique: promoUniques,
+	}
+
+	if dto.Target != nil {
+		promo.Country = countries.ByName(strings.ToUpper(dto.Target.Country))
+		promo.AgeFrom = dto.Target.AgeFrom
+		promo.AgeUntil = dto.Target.AgeUntil
 	}
 
 	return s.promoStorage.Update(ctx, fiberCtx, &promo, id)
