@@ -78,16 +78,16 @@ type PromoFeedRequest struct {
 	Active   string `query:"active"`
 }
 
-// PromoForUser TODO is_activated_by_user
 // PromoForUser promoDTO for user's feed
 type PromoForUser struct {
-	PromoID       string `json:"promo_id"`
-	CompanyID     string `json:"company_id"`
-	CompanyName   string `json:"company_name"`
-	Description   string `json:"description"`
-	ImageURL      string `json:"image_url"`
-	Active        bool   `json:"active"`
-	LikeCount     int    `json:"like_count"`
-	IsLikedByUser bool   `json:"is_liked_by_user"`
-	UsedCount     int    `json:"used_count"`
+	PromoID           string `json:"promo_id"`
+	CompanyID         string `json:"company_id"`
+	CompanyName       string `json:"company_name"`
+	Description       string `json:"description"`
+	ImageURL          string `json:"image_url"`
+	Active            bool   `json:"active"`
+	LikeCount         int    `json:"like_count"`
+	IsLikedByUser     bool   `json:"is_liked_by_user"`
+	IsActivatedByUser bool   `json:"is_activated_by_user"`
+	UsedCount         int    `json:"used_count"`
 }

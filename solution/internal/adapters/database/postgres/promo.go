@@ -320,6 +320,7 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 			   p.active,
 			   p.like_count,
 			   p.comment_count,
+			   EXISTS(SELECT * from activations a WHERE a.user_id = ? AND a.promo_id = p.promo_id) AS is_activated,
 			   c.name AS category_name,
 			   b.name AS business_name,
 			   b.id   AS business_id
@@ -349,6 +350,7 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 				   p.active,
 				   p.like_count,
 				   p.comment_count,
+				   EXISTS(SELECT * from activations a WHERE a.user_id = ? AND a.promo_id = p.promo_id) AS is_activated,
 				   c.name AS category_name,
 				   b.name AS business_name,
 				   b.id   AS business_id
@@ -381,17 +383,18 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 		Active       bool
 		LikeCount    int
 		CommentCount int
+		IsActivated  bool
 		CategoryName string
 	}
 
 	var results []result
 
 	if active != "" {
-		if err := s.db.WithContext(ctx).Raw(query, category, age, age, country, active, limit, offset).Scan(&results).Error; err != nil {
+		if err := s.db.WithContext(ctx).Raw(query, userID, category, age, age, country, active, limit, offset).Scan(&results).Error; err != nil {
 			return nil, 0, err
 		}
 	} else {
-		if err := s.db.WithContext(ctx).Raw(query, category, age, age, country, limit, offset).Scan(&results).Error; err != nil {
+		if err := s.db.WithContext(ctx).Raw(query, userID, category, age, age, country, limit, offset).Scan(&results).Error; err != nil {
 			return nil, 0, err
 		}
 	}
@@ -400,14 +403,15 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 
 	for _, r := range results {
 		promos = append(promos, dto.PromoForUser{
-			PromoID:       r.PromoID,
-			CompanyID:     r.BusinessID,
-			CompanyName:   r.BusinessName,
-			Description:   r.Description,
-			ImageURL:      r.ImageURL,
-			Active:        r.Active,
-			IsLikedByUser: s.actionsStorage.IsLikedByUser(ctx, userID, r.PromoID),
-			LikeCount:     r.LikeCount,
+			PromoID:           r.PromoID,
+			CompanyID:         r.BusinessID,
+			CompanyName:       r.BusinessName,
+			Description:       r.Description,
+			ImageURL:          r.ImageURL,
+			Active:            r.Active,
+			IsLikedByUser:     s.actionsStorage.IsLikedByUser(ctx, userID, r.PromoID),
+			IsActivatedByUser: r.IsActivated,
+			LikeCount:         r.LikeCount,
 		})
 	}
 
@@ -437,6 +441,7 @@ func (s *promoStorage) GetByIdUser(ctx context.Context, promoID, userID string) 
 			   p.active,
 			   p.like_count,
 			   p.comment_count,
+			   EXISTS(SELECT * from activations a WHERE a.user_id = ? AND a.promo_id = ?) AS is_activated -- is_activated_by_user
 			   b.name AS business_name,
 			   b.id   AS business_id
 		FROM promos p
@@ -452,25 +457,27 @@ func (s *promoStorage) GetByIdUser(ctx context.Context, promoID, userID string) 
 		Active       bool
 		LikeCount    int
 		CommentCount int
+		IsActivated  bool
 		CategoryName string
 	}
 
 	var queryResult result
 
-	if err := s.db.WithContext(ctx).Raw(query, promoID).Scan(&queryResult).Error; err != nil {
+	if err := s.db.WithContext(ctx).Raw(query, userID, promoID, promoID).Scan(&queryResult).Error; err != nil {
 		return promo, err
 	}
 
 	promo = dto.PromoForUser{
-		PromoID:       queryResult.PromoID,
-		CompanyID:     queryResult.BusinessID,
-		CompanyName:   queryResult.BusinessName,
-		Description:   queryResult.Description,
-		ImageURL:      queryResult.ImageURL,
-		Active:        queryResult.Active,
-		LikeCount:     queryResult.LikeCount,
-		IsLikedByUser: s.actionsStorage.IsLikedByUser(ctx, userID, promoID),
-		UsedCount:     queryResult.CommentCount,
+		PromoID:           queryResult.PromoID,
+		CompanyID:         queryResult.BusinessID,
+		CompanyName:       queryResult.BusinessName,
+		Description:       queryResult.Description,
+		ImageURL:          queryResult.ImageURL,
+		Active:            queryResult.Active,
+		LikeCount:         queryResult.LikeCount,
+		IsLikedByUser:     s.actionsStorage.IsLikedByUser(ctx, userID, promoID),
+		IsActivatedByUser: queryResult.IsActivated,
+		UsedCount:         queryResult.CommentCount,
 	}
 
 	return promo, nil
