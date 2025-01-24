@@ -6,7 +6,7 @@ import (
 )
 
 type PromoCreate struct {
-	Target      Target   `json:"target" validate:"required"`
+	Target      *Target  `json:"target" validate:"required"`
 	ActiveFrom  string   `json:"active_from"`
 	ActiveUntil string   `json:"active_until"`
 	Description string   `json:"description" validate:"required"`
