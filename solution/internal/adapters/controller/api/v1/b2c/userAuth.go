@@ -7,6 +7,7 @@ import (
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
+	"solution/internal/adapters/database/redis"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
@@ -34,7 +35,7 @@ type UserHandler struct {
 
 func NewUserHandler(app *app.App) *UserHandler {
 	userStorage := postgres.NewUserStorage(app.DB)
-	tokenStorage := postgres.NewTokenStorage(app.DB)
+	tokenStorage := redis.NewTokenStorage(app.Redis)
 
 	return &UserHandler{
 		userService:  service.NewUserService(userStorage),

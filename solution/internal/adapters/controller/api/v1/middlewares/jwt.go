@@ -5,6 +5,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"solution/cmd/app"
 	"solution/internal/adapters/database/postgres"
+	"solution/internal/adapters/database/redis"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"solution/internal/domain/service"
@@ -19,9 +20,14 @@ type BusinessService interface {
 	GetByID(ctx context.Context, uuid string) (*entity.Business, error)
 }
 
+type TokenService interface {
+	VerifyAuthId(ctx context.Context, userID, authID string) (bool, error)
+}
+
 type MiddlewareHandler struct {
 	userService     UserService
 	businessService BusinessService
+	tokenService    TokenService
 }
 
 // NewMiddlewareHandler is a function that returns a new instance of MiddlewareHandler.
@@ -31,9 +37,13 @@ func NewMiddlewareHandler(app *app.App) *MiddlewareHandler {
 	businessStorage := postgres.NewBusinessStorage(app.DB)
 	businessService := service.NewBusinessService(businessStorage)
 
+	tokenStorage := redis.NewTokenStorage(app.Redis)
+	tokenService := service.NewTokenService(tokenStorage)
+
 	return &MiddlewareHandler{
 		userService:     userService,
 		businessService: businessService,
+		tokenService:    tokenService,
 	}
 }
 
@@ -45,9 +55,20 @@ func (h MiddlewareHandler) IsAuthenticated() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 
-		user, fetchErr := auth.GetUserFromJWT(authHeader, "access", c.Context(), h.userService.GetByID)
+		user, authID, fetchErr := auth.GetUserFromJWT(authHeader, "access", c.Context(), h.userService.GetByID)
 
-		business, businessFetchErr := auth.GetBusinessFromJWT(authHeader, "access", c.Context(), h.businessService.GetByID)
+		business, businessAuthID, businessFetchErr := auth.GetBusinessFromJWT(authHeader, "access", c.Context(), h.businessService.GetByID)
+
+		userVerify, userVerifyErr := h.tokenService.VerifyAuthId(c.Context(), user.ID, authID)
+
+		businessVerify, businessVerifyErr := h.tokenService.VerifyAuthId(c.Context(), business.ID, businessAuthID)
+
+		if (userVerifyErr != nil && businessVerifyErr != nil) || (!userVerify && !businessVerify) {
+			return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Время действия токена истекло.",
+			})
+		}
 
 		if (fetchErr != nil && businessFetchErr != nil) || (user == nil && business == nil) {
 			return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{

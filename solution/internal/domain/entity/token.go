@@ -10,6 +10,7 @@ type Token struct {
 
 	Token   string    `gorm:"not null"`
 	UserID  string    `gorm:"not null;type:uuid"`
+	AuthID  string    `gorm:"not null;type:uuid"`
 	Type    string    `gorm:"not null"`
 	Expires time.Time `gorm:"not null"`
 }
