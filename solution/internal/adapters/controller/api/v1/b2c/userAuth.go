@@ -12,6 +12,7 @@ import (
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"solution/internal/domain/service"
+	"strings"
 	"time"
 )
 
@@ -89,7 +90,7 @@ func (h UserHandler) register(c fiber.Ctx) error {
 		Token: tokens.Access.Token,
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(response)
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 func (h UserHandler) login(c fiber.Ctx) error {
@@ -150,7 +151,7 @@ func (h UserHandler) getProfile(c fiber.Ctx) error {
 		AvatarURL: user.AvatarURL,
 		Other: dto.UserOther{
 			Age:     user.Age,
-			Country: user.Country.String(),
+			Country: strings.ToLower(user.Country.Alpha2()),
 		},
 	}
 
@@ -195,7 +196,7 @@ func (h UserHandler) updateProfile(c fiber.Ctx) error {
 		AvatarURL: updatedUser.AvatarURL,
 		Other: dto.UserOther{
 			Age:     updatedUser.Age,
-			Country: updatedUser.Country.String(),
+			Country: strings.ToLower(updatedUser.Country.Alpha2()),
 		},
 	}
 

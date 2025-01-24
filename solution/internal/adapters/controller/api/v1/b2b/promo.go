@@ -8,7 +8,6 @@ import (
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
-	"solution/internal/adapters/logger"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
@@ -123,8 +122,6 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 		})
 	}
 
-	logger.Log.Info(promoRequestDTO)
-
 	promoDTO := dto.PromoGetWithPagination{
 		Limit:  promoRequestDTO.Limit,
 		Offset: promoRequestDTO.Offset,
@@ -134,8 +131,6 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 	for _, country := range promoRequestDTO.Countries {
 		promoDTO.Countries = append(promoDTO.Countries, countries.ByName(country))
 	}
-
-	logger.Log.Info(promoDTO)
 
 	promos, total, err := h.promoService.GetWithPagination(c.Context(), company.ID, promoDTO)
 	if err != nil {
@@ -170,8 +165,8 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 				Categories: categories,
 			},
 			Active:      promo.Active,
-			ActiveFrom:  promo.ActiveFrom,
-			ActiveUntil: promo.ActiveUntil,
+			ActiveFrom:  promo.ActiveFrom.Format("2006-01-02"),
+			ActiveUntil: promo.ActiveUntil.Format("2006-01-02"),
 			Description: promo.Description,
 			ImageURL:    promo.ImageURL,
 			MaxCount:    promo.MaxCount,
@@ -240,12 +235,12 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 		Target: dto.Target{
 			AgeFrom:    promo.AgeFrom,
 			AgeUntil:   promo.AgeUntil,
-			Country:    promo.Country.Alpha2(),
+			Country:    strings.ToLower(promo.Country.Alpha2()),
 			Categories: categories,
 		},
 		Active:      promo.Active,
-		ActiveFrom:  promo.ActiveFrom,
-		ActiveUntil: promo.ActiveUntil,
+		ActiveFrom:  promo.ActiveFrom.Format("2006-01-02"),
+		ActiveUntil: promo.ActiveUntil.Format("2006-01-02"),
 		Description: promo.Description,
 		ImageURL:    promo.ImageURL,
 		MaxCount:    promo.MaxCount,

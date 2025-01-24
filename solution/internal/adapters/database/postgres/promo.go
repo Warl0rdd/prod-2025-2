@@ -152,6 +152,7 @@ func (s *promoStorage) GetByID(ctx context.Context, id string) (*entity.Promo, e
 	return &promo, nil
 }
 
+// TODO fix order by
 func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countriesSlice []countries.CountryCode) ([]entity.Promo, int64, error) {
 	var promosMap = make(map[string]*entity.Promo)
 
@@ -300,14 +301,24 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 // Update is a method to update an existing Promo in database.
 func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo *entity.Promo, id string) (*entity.Promo, error) {
 	var oldPromo entity.Promo
-	s.db.WithContext(ctx).Model(&entity.Promo{}).Where("id = ?", id).First(&oldPromo)
+
+	var total int64
+	if _ = s.db.WithContext(ctx).Model(&entity.Promo{}).Where("promo_id = ?", id).Count(&total); total == 0 {
+		return nil, errorz.NotFound
+	}
+
+	s.db.WithContext(ctx).Model(&entity.Promo{}).Where("promo_id = ?", id).First(&oldPromo)
+
 	if oldPromo.CompanyID != fiberCtx.Locals("business").(*entity.Business).ID {
 		return nil, errorz.Forbidden
 	}
-	query := s.db.WithContext(ctx).Model(&entity.Promo{}).Where("id = ?", promo.PromoID).Updates(&promo)
+
+	query := s.db.WithContext(ctx).Model(&entity.Promo{}).Where("promo_id = ?", promo.PromoID).Updates(&promo)
+
 	if query.RowsAffected == 0 {
 		return nil, errorz.NotFound
 	}
+
 	return promo, query.Error
 }
 

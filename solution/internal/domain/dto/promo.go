@@ -53,18 +53,18 @@ type PromoDTO struct {
 	CreatedAt   time.Time `json:"-"`
 	UpdatedAt   time.Time `json:"-"`
 
-	Target      Target    `json:"target"`
-	Active      bool      `json:"active"`
-	ActiveFrom  time.Time `json:"active_from"`
-	ActiveUntil time.Time `json:"active_until"`
-	Description string    `json:"description"`
-	ImageURL    string    `json:"image_url"`
-	MaxCount    int       `json:"max_count"`
-	Mode        string    `json:"mode"`
-	LikeCount   int       `json:"like_count"`
-	UsedCount   int       `json:"used_count"`
-	PromoCommon string    `json:"promo_common"`
-	PromoUnique []string  `json:"promo_unique"`
+	Target      Target   `json:"target"`
+	Active      bool     `json:"active"`
+	ActiveFrom  string   `json:"active_from"`
+	ActiveUntil string   `json:"active_until"`
+	Description string   `json:"description"`
+	ImageURL    string   `json:"image_url"`
+	MaxCount    int      `json:"max_count"`
+	Mode        string   `json:"mode"`
+	LikeCount   int      `json:"like_count"`
+	UsedCount   int      `json:"used_count"`
+	PromoCommon string   `json:"promo_common"`
+	PromoUnique []string `json:"promo_unique"`
 }
 
 type PromoGetWithPaginationResponse struct {
