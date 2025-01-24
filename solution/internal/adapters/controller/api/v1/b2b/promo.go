@@ -57,6 +57,13 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 		})
 	}
 
+	if len(promoDTO.Description) < 10 || len(promoDTO.Description) > 300 {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
 	if (promoDTO.Mode != "COMMON") && (promoDTO.Mode != "UNIQUE") {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
@@ -72,6 +79,13 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 	}
 
 	if (promoDTO.Mode == "COMMON" && promoDTO.PromoUnique != nil) || (promoDTO.Mode == "UNIQUE" && promoDTO.PromoCommon != "") {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if len(promoDTO.Target.Country) > 2 {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
