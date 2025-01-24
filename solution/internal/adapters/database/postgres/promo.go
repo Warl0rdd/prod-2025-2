@@ -537,3 +537,41 @@ func (s *promoStorage) GetHistory(ctx context.Context, userID string, limit, off
 
 	return promos, results[0].TotalCount, nil
 }
+
+func (s *promoStorage) GetStats(ctx context.Context, promoID, companyID string) (dto.PromoStatsResponse, error) {
+	query := `
+		SELECT DISTINCT p.used_count,
+			   COUNT(*) OVER (PARTITION BY u.country) AS activations_count,
+			   u.country
+		FROM promos p
+				 INNER JOIN public.activations a on p.promo_id = a.promo_id
+				 INNER JOIN users u ON a.user_id = u.id
+		WHERE company_id = ?
+		AND p.promo_id = ?`
+
+	type result struct {
+		ActivationsCount int
+		UsedCount        int
+		Country          int
+	}
+
+	var results []result
+	if err := s.db.WithContext(ctx).Raw(query, companyID, promoID).Scan(&results).Error; err != nil {
+		return dto.PromoStatsResponse{}, err
+	}
+
+	if len(results) == 0 {
+		return dto.PromoStatsResponse{}, errorz.NotFound
+	}
+
+	var stats dto.PromoStatsResponse
+	for _, r := range results {
+		stats.ActivationsCount = results[0].ActivationsCount
+		stats.Countries = append(stats.Countries, dto.ActivationsByCountry{
+			Country: countries.CountryCode(r.Country).Alpha2(),
+			Count:   r.ActivationsCount,
+		})
+	}
+
+	return stats, nil
+}

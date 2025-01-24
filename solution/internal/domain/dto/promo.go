@@ -96,3 +96,17 @@ type PromoHistory struct {
 	Limit  int `query:"limit"`
 	Offset int `query:"offset"`
 }
+
+type PromoStats struct {
+	Id string `uri:"id" validate:"required"`
+}
+
+type PromoStatsResponse struct {
+	ActivationsCount int                    `json:"activations_count"`
+	Countries        []ActivationsByCountry `json:"countries"`
+}
+
+type ActivationsByCountry struct {
+	Country string `json:"country"`
+	Count   int    `json:"activations_count"`
+}

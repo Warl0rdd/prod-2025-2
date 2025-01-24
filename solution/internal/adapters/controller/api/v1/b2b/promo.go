@@ -22,6 +22,7 @@ type PromoService interface {
 	GetByID(ctx context.Context, uuid string) (*entity.Promo, error)
 	GetWithPagination(ctx context.Context, companyId string, dto dto.PromoGetWithPagination) ([]entity.Promo, int64, error)
 	Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.PromoCreate, id string) (*entity.Promo, error)
+	GetStats(ctx context.Context, promoID, companyID string) (dto.PromoStatsResponse, error)
 }
 
 type PromoHandler struct {
@@ -305,10 +306,70 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(newPromo)
 }
 
+func (h PromoHandler) stats(c fiber.Ctx) error {
+	var requestDTO dto.PromoStats
+	business := c.Locals("business").(*entity.Business)
+
+	if business == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Пользователь не авторизован.",
+		})
+	}
+
+	if err := c.Bind().URI(&requestDTO); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if errValidate := h.validator.ValidateData(requestDTO); errValidate != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	promoByID, err := h.promoService.GetByID(c.Context(), requestDTO.Id)
+
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	if promoByID.CompanyID != business.ID {
+		return c.Status(fiber.StatusForbidden).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Промокод не принадлежит этой компании.",
+		})
+	}
+
+	promos, statsErr := h.promoService.GetStats(c.Context(), requestDTO.Id, business.ID)
+
+	if statsErr != nil {
+		if errors.Is(err, errorz.NotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: err.Error(),
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(promos)
+}
+
 func (h PromoHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	promoGroup := router.Group("/business")
 	promoGroup.Post("/promo", h.create, middleware)
 	promoGroup.Get("/promo", h.getWithPagination, middleware)
 	promoGroup.Get("/promo/:id", h.getByID, middleware)
 	promoGroup.Patch("/promo/:id", h.update, middleware)
+	promoGroup.Get("/promo/:id/stat", h.stats, middleware)
 }

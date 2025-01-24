@@ -18,6 +18,7 @@ type promoStorage interface {
 	GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active, userID string) ([]dto.PromoForUser, int64, error)
 	GetByIdUser(ctx context.Context, promoID, userID string) (dto.PromoForUser, error)
 	GetHistory(ctx context.Context, userID string, limit, offset int) ([]dto.PromoForUser, int64, error)
+	GetStats(ctx context.Context, promoID, companyID string) (dto.PromoStatsResponse, error)
 }
 
 type promoService struct {
@@ -155,4 +156,8 @@ func (s *promoService) GetByIdUser(ctx context.Context, promoID, userID string) 
 
 func (s *promoService) GetHistory(ctx context.Context, userID string, limit, offset int) ([]dto.PromoForUser, int64, error) {
 	return s.promoStorage.GetHistory(ctx, userID, limit, offset)
+}
+
+func (s *promoService) GetStats(ctx context.Context, promoID, companyID string) (dto.PromoStatsResponse, error) {
+	return s.promoStorage.GetStats(ctx, promoID, companyID)
 }

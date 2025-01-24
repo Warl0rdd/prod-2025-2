@@ -33,6 +33,7 @@ func NewUserPromoHandler(app *app.App) *UserPromoHandler {
 	}
 }
 
+// GetFeed TODO category not required
 func (h UserPromoHandler) GetFeed(c fiber.Ctx) error {
 	var requestDTO dto.PromoFeedRequest
 
