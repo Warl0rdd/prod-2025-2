@@ -15,6 +15,7 @@ import (
 type PromoService interface {
 	GetFeed(ctx context.Context, user *entity.User, dto dto.PromoFeedRequest) ([]dto.PromoForUser, int64, error)
 	GetByIdUser(ctx context.Context, promoID, userID string) (dto.PromoForUser, error)
+	GetHistory(ctx context.Context, userID string, limit, offset int) ([]dto.PromoForUser, int64, error)
 }
 
 type UserPromoHandler struct {
@@ -40,6 +41,10 @@ func (h UserPromoHandler) GetFeed(c fiber.Ctx) error {
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
+	}
+
+	if requestDTO.Limit == 0 {
+		requestDTO.Limit = 10
 	}
 
 	user := c.Locals("user").(*entity.User)
@@ -103,8 +108,45 @@ func (h UserPromoHandler) GetPromoByID(c fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(promo)
 }
 
+func (h UserPromoHandler) GetHistory(c fiber.Ctx) error {
+	var requestDTO dto.PromoHistory
+	user := c.Locals("user").(*entity.User)
+
+	if err := c.Bind().Query(&requestDTO); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if requestDTO.Limit == 0 {
+		requestDTO.Limit = 10
+	}
+
+	if user == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Пользователь не авторизован.",
+		})
+	}
+
+	promos, total, err := h.PromoService.GetHistory(c.Context(), user.ID, requestDTO.Limit, requestDTO.Offset)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: err.Error(),
+		})
+	}
+
+	c.Append("X-Total-Count", strconv.FormatInt(total, 10))
+
+	return c.Status(fiber.StatusOK).JSON(promos)
+}
+
 func (h UserPromoHandler) Setup(router fiber.Router, middleware fiber.Handler) {
 	userGroup := router.Group("/user")
 	userGroup.Get("/feed", h.GetFeed, middleware)
+	userGroup.Get("/promo/history", h.GetHistory, middleware)
 	userGroup.Get("/promo/:id", h.GetPromoByID, middleware)
 }

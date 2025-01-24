@@ -17,6 +17,7 @@ type promoStorage interface {
 	GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countries []countries.CountryCode) ([]entity.Promo, int64, error)
 	GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active, userID string) ([]dto.PromoForUser, int64, error)
 	GetByIdUser(ctx context.Context, promoID, userID string) (dto.PromoForUser, error)
+	GetHistory(ctx context.Context, userID string, limit, offset int) ([]dto.PromoForUser, int64, error)
 }
 
 type promoService struct {
@@ -150,4 +151,8 @@ func (s *promoService) GetFeed(ctx context.Context, user *entity.User, dto dto.P
 
 func (s *promoService) GetByIdUser(ctx context.Context, promoID, userID string) (dto.PromoForUser, error) {
 	return s.promoStorage.GetByIdUser(ctx, promoID, userID)
+}
+
+func (s *promoService) GetHistory(ctx context.Context, userID string, limit, offset int) ([]dto.PromoForUser, int64, error) {
+	return s.promoStorage.GetHistory(ctx, userID, limit, offset)
 }

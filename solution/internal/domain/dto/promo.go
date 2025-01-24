@@ -91,3 +91,8 @@ type PromoForUser struct {
 	IsActivatedByUser bool   `json:"is_activated_by_user"`
 	UsedCount         int    `json:"used_count"`
 }
+
+type PromoHistory struct {
+	Limit  int `query:"limit"`
+	Offset int `query:"offset"`
+}

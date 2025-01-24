@@ -441,7 +441,7 @@ func (s *promoStorage) GetByIdUser(ctx context.Context, promoID, userID string) 
 			   p.active,
 			   p.like_count,
 			   p.comment_count,
-			   EXISTS(SELECT * from activations a WHERE a.user_id = ? AND a.promo_id = ?) AS is_activated -- is_activated_by_user
+			   EXISTS(SELECT * from activations a WHERE a.user_id = ? AND a.promo_id = ?) AS is_activated, -- is_activated_by_user
 			   b.name AS business_name,
 			   b.id   AS business_id
 		FROM promos p
@@ -458,7 +458,6 @@ func (s *promoStorage) GetByIdUser(ctx context.Context, promoID, userID string) 
 		LikeCount    int
 		CommentCount int
 		IsActivated  bool
-		CategoryName string
 	}
 
 	var queryResult result
@@ -481,4 +480,60 @@ func (s *promoStorage) GetByIdUser(ctx context.Context, promoID, userID string) 
 	}
 
 	return promo, nil
+}
+
+func (s *promoStorage) GetHistory(ctx context.Context, userID string, limit, offset int) ([]dto.PromoForUser, int64, error) {
+	query := `
+		SELECT p.promo_id,
+			   p.company_id,
+			   p.description,
+			   p.image_url,
+			   p.active,
+			   p.like_count,
+			   p.comment_count,
+			   EXISTS(SELECT * from activations a WHERE a.user_id = ? AND a.promo_id = p.promo_id) AS is_activated, -- is_activated_by_user
+			   b.name                                                                     AS business_name,
+			   b.id                                                                       AS business_id,
+			   COUNT(*) OVER() AS total_count
+		FROM activations a
+				 INNER JOIN promos p on p.promo_id = a.promo_id
+				 INNER JOIN businesses b ON b.id = p.company_id
+		WHERE user_id = ?
+		LIMIT ? OFFSET ?`
+
+	type result struct {
+		PromoID      string
+		BusinessID   string
+		BusinessName string
+		Description  string
+		ImageURL     string
+		Active       bool
+		LikeCount    int
+		CommentCount int
+		IsActivated  bool
+		TotalCount   int64
+	}
+
+	var results []result
+	if err := s.db.WithContext(ctx).Raw(query, userID, userID, limit, offset).Scan(&results).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var promos []dto.PromoForUser
+	for _, r := range results {
+		promos = append(promos, dto.PromoForUser{
+			PromoID:           r.PromoID,
+			CompanyID:         r.BusinessID,
+			CompanyName:       r.BusinessName,
+			Description:       r.Description,
+			ImageURL:          r.ImageURL,
+			Active:            r.Active,
+			LikeCount:         r.LikeCount,
+			IsLikedByUser:     s.actionsStorage.IsLikedByUser(ctx, userID, r.PromoID),
+			IsActivatedByUser: r.IsActivated,
+			UsedCount:         r.CommentCount,
+		})
+	}
+
+	return promos, results[0].TotalCount, nil
 }
