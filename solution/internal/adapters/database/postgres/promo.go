@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/biter777/countries"
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
@@ -23,26 +24,6 @@ func NewPromoStorage(db *gorm.DB) *promoStorage {
 		db:             db,
 		actionsStorage: NewActionsStorage(db),
 	}
-}
-
-// Проверка на уникальность категории
-func containsCategory(categories []entity.Category, category entity.Category) bool {
-	for _, c := range categories {
-		if c.CategoryID == category.CategoryID {
-			return true
-		}
-	}
-	return false
-}
-
-// Проверка на уникальность уникального промокода
-func containsPromoUnique(promoUniques []entity.PromoUnique, promoUnique entity.PromoUnique) bool {
-	for _, pu := range promoUniques {
-		if pu.PromoUniqueID == promoUnique.PromoUniqueID {
-			return true
-		}
-	}
-	return false
 }
 
 // Create is a method to create a new Promo in database.
@@ -153,29 +134,68 @@ func (s *promoStorage) GetByID(ctx context.Context, id string) (*entity.Promo, e
 	return &promo, nil
 }
 
-// TODO fix order by (case)
 func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countriesSlice []countries.CountryCode) ([]entity.Promo, int64, error) {
-	var promosMap = make(map[string]*entity.Promo)
-
 	query := `
 		SELECT
-			p.promo_id, p.company_id, p.created_at, p.updated_at, p.active, p.active_from, p.active_until,
-			p.description, p.image_url, p.max_count, p.mode, p.like_count, p.used_count, p.promo_common,
-			p.age_from, p.age_until, p.country,
-			c.category_id AS category_id, c.name AS category_name,
-			pu.promo_unique_id AS promo_unique_id, pu.body AS promo_unique_body, pu.activated AS promo_unique_activated
-		FROM
-			promos p
-		LEFT JOIN
-			categories c ON p.promo_id = c.promo_id
-		LEFT JOIN
-			promo_uniques pu ON p.promo_id = pu.promo_id
+			p.promo_id,
+			p.company_id,
+			p.created_at,
+			p.updated_at,
+			p.active,
+			p.active_from,
+			p.active_until,
+			p.description,
+			p.image_url,
+			p.max_count,
+			p.mode,
+			p.like_count,
+			p.used_count,
+			p.promo_common,
+			p.age_from,
+			p.age_until,
+			p.country,
+			JSON_AGG(
+					DISTINCT jsonb_build_object(
+					'category_id', c.category_id,
+					'category_name', c.name
+							 )
+			) AS categories,
+			JSON_AGG(
+					DISTINCT jsonb_build_object(
+					'promo_unique_id', pu.promo_unique_id,
+					'promo_unique_body', pu.body,
+					'promo_unique_activated', pu.activated
+							 )
+			) AS promo_uniques
+		FROM promos p
+				 LEFT JOIN categories c ON p.promo_id = c.promo_id
+				 LEFT JOIN promo_uniques pu ON p.promo_id = pu.promo_id
 		WHERE
 			p.company_id = ?`
 
 	if len(countriesSlice) > 0 {
 		query += ` AND (p.country IN ? OR p.country = 0)`
 	}
+
+	query += `
+		GROUP BY
+			p.promo_id,
+			p.company_id,
+			p.created_at,
+			p.updated_at,
+			p.active,
+			p.active_from,
+			p.active_until,
+			p.description,
+			p.image_url,
+			p.max_count,
+			p.mode,
+			p.like_count,
+			p.used_count,
+			p.promo_common,
+			p.age_from,
+			p.age_until,
+			p.country`
 
 	switch sortBy {
 	case "active_from":
@@ -189,28 +209,36 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 	query += ` LIMIT ? OFFSET ?`
 
 	type result struct {
-		PromoID              string
-		CompanyID            string
-		CreatedAt            time.Time
-		UpdatedAt            time.Time
-		Active               bool
-		ActiveFrom           time.Time
-		ActiveUntil          time.Time
-		Description          string
-		ImageURL             string
-		MaxCount             int
-		Mode                 string
-		LikeCount            int
-		UsedCount            int
-		PromoCommon          string
-		AgeFrom              int
-		AgeUntil             int
-		Country              countries.CountryCode
-		CategoryID           *string
-		CategoryName         *string
-		PromoUniqueID        *string
-		PromoUniqueBody      *string
-		PromoUniqueActivated *bool
+		PromoID      string
+		CompanyID    string
+		CreatedAt    time.Time
+		UpdatedAt    time.Time
+		Active       bool
+		ActiveFrom   time.Time
+		ActiveUntil  time.Time
+		Description  string
+		ImageURL     string
+		MaxCount     int
+		Mode         string
+		LikeCount    int
+		UsedCount    int
+		PromoCommon  string
+		AgeFrom      int
+		AgeUntil     int
+		Country      countries.CountryCode
+		Categories   *string
+		PromoUniques *string
+	}
+
+	type Category struct {
+		CategoryID   string `json:"category_id"`
+		CategoryName string `json:"category_name"`
+	}
+
+	type PromoUnique struct {
+		PromoUniqueID        string `json:"promo_unique_id"`
+		PromoUniqueBody      string `json:"promo_unique_body"`
+		PromoUniqueActivated bool   `json:"promo_unique_activated"`
 	}
 
 	var results []result
@@ -225,66 +253,60 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 		}
 	}
 
-	// Обработка результатов
-	for _, r := range results {
-		// Проверяем, есть ли уже Promo с данным PromoID
-		promo, exists := promosMap[r.PromoID]
-		if !exists {
-			// Создаем новый Promo
-			promo = &entity.Promo{
-				PromoID:     r.PromoID,
-				CompanyID:   r.CompanyID,
-				CreatedAt:   r.CreatedAt,
-				UpdatedAt:   r.UpdatedAt,
-				Active:      r.Active,
-				ActiveFrom:  r.ActiveFrom,
-				ActiveUntil: r.ActiveUntil,
-				Description: r.Description,
-				ImageURL:    r.ImageURL,
-				MaxCount:    r.MaxCount,
-				Mode:        r.Mode,
-				LikeCount:   r.LikeCount,
-				UsedCount:   r.UsedCount,
-				PromoCommon: r.PromoCommon,
-				AgeFrom:     r.AgeFrom,
-				AgeUntil:    r.AgeUntil,
-				Country:     r.Country,
-			}
-			promosMap[r.PromoID] = promo
-		}
-
-		// Добавляем категорию, если она есть и еще не добавлена
-		if r.CategoryID != nil {
-			category := entity.Category{
-				CategoryID: *r.CategoryID,
-				PromoID:    r.PromoID,
-				Name:       *r.CategoryName,
-			}
-
-			if !containsCategory(promo.Categories, category) {
-				promo.Categories = append(promo.Categories, category)
-			}
-		}
-
-		// Добавляем уникальный промокод, если он есть и еще не добавлен
-		if r.PromoUniqueID != nil {
-			promoUnique := entity.PromoUnique{
-				PromoUniqueID: *r.PromoUniqueID,
-				PromoID:       r.PromoID,
-				Body:          *r.PromoUniqueBody,
-				Activated:     *r.PromoUniqueActivated,
-			}
-
-			if !containsPromoUnique(promo.PromoUnique, promoUnique) {
-				promo.PromoUnique = append(promo.PromoUnique, promoUnique)
-			}
-		}
-	}
-
-	// Конвертируем мапу в срез
 	var promos []entity.Promo
-	for _, promo := range promosMap {
-		promos = append(promos, *promo)
+
+	for _, r := range results {
+		var categories []Category
+		var promoUniques []PromoUnique
+
+		if r.Categories != nil {
+			if err := json.Unmarshal([]byte(*r.Categories), &categories); err != nil {
+				return nil, 0, err
+			}
+		}
+
+		if r.PromoUniques != nil {
+			if err := json.Unmarshal([]byte(*r.PromoUniques), &promoUniques); err != nil {
+				return nil, 0, err
+			}
+		}
+
+		promo := entity.Promo{
+			PromoID:     r.PromoID,
+			CompanyID:   r.CompanyID,
+			CreatedAt:   r.CreatedAt,
+			UpdatedAt:   r.UpdatedAt,
+			Active:      r.Active,
+			ActiveFrom:  r.ActiveFrom,
+			ActiveUntil: r.ActiveUntil,
+			Description: r.Description,
+			ImageURL:    r.ImageURL,
+			MaxCount:    r.MaxCount,
+			Mode:        r.Mode,
+			LikeCount:   r.LikeCount,
+			UsedCount:   r.UsedCount,
+			PromoCommon: r.PromoCommon,
+			AgeFrom:     r.AgeFrom,
+			AgeUntil:    r.AgeUntil,
+			Country:     r.Country,
+		}
+
+		for _, category := range categories {
+			promo.Categories = append(promo.Categories, entity.Category{
+				CategoryID: category.CategoryID,
+				Name:       category.CategoryName,
+			})
+		}
+
+		for _, promoUnique := range promoUniques {
+			promo.PromoUnique = append(promo.PromoUnique, entity.PromoUnique{
+				PromoUniqueID: promoUnique.PromoUniqueID,
+				Body:          promoUnique.PromoUniqueBody,
+				Activated:     promoUnique.PromoUniqueActivated,
+			})
+		}
+
+		promos = append(promos, promo)
 	}
 
 	// Получаем общее количество записей

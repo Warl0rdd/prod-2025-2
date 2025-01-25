@@ -18,10 +18,10 @@ type PromoCreate struct {
 }
 
 type Target struct {
-	AgeFrom    int      `json:"age_from"`
-	AgeUntil   int      `json:"age_until"`
-	Country    string   `json:"country"`
-	Categories []string `json:"categories"`
+	AgeFrom    int      `json:"age_from,omitempty"`
+	AgeUntil   int      `json:"age_until,omitempty"`
+	Country    string   `json:"country,omitempty"`
+	Categories []string `json:"categories,omitempty"`
 }
 
 type PromoCreateResponse struct {

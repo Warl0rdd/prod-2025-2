@@ -161,10 +161,16 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 		var categories, promoUniques []string
 
 		for _, category := range promo.Categories {
+			if category.Name == "" {
+				continue
+			}
 			categories = append(categories, category.Name)
 		}
 
 		for _, promoUnique := range promo.PromoUnique {
+			if promoUnique.Body == "" {
+				continue
+			}
 			promoUniques = append(promoUniques, promoUnique.Body)
 		}
 
@@ -175,7 +181,7 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 			Target: dto.Target{
 				AgeFrom:    promo.AgeFrom,
 				AgeUntil:   promo.AgeUntil,
-				Country:    promo.Country.Alpha2(),
+				Country:    strings.ToLower(promo.Country.Alpha2()),
 				Categories: categories,
 			},
 			Active:      promo.Active,
