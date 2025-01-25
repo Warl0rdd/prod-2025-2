@@ -20,7 +20,7 @@ type PromoService interface {
 	Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO dto.PromoCreate) (*entity.Promo, error)
 	GetByID(ctx context.Context, uuid string) (*entity.Promo, error)
 	GetWithPagination(ctx context.Context, companyId string, dto dto.PromoGetWithPagination) ([]entity.Promo, int64, error)
-	Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.PromoCreate, id string) (*entity.Promo, error)
+	Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.PromoUpdate, id string) (*entity.Promo, error)
 	GetStats(ctx context.Context, promoID, companyID string) (dto.PromoStatsResponse, error)
 }
 
@@ -279,7 +279,7 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 	}
 
 	var params Params
-	var promoDTO dto.PromoCreate
+	var promoDTO dto.PromoUpdate
 
 	if err := c.Bind().Body(&promoDTO); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
@@ -293,6 +293,50 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
+	}
+
+	if len(promoDTO.Description) < 10 || len(promoDTO.Description) > 300 {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if (promoDTO.Mode != "COMMON") && (promoDTO.Mode != "UNIQUE") {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if promoDTO.Mode == "UNIQUE" && (promoDTO.PromoUnique == nil || promoDTO.MaxCount != 1) {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if (promoDTO.Mode == "COMMON" && promoDTO.PromoUnique != nil) || (promoDTO.Mode == "UNIQUE" && promoDTO.PromoCommon != "") {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if promoDTO.Target != nil {
+		if len(promoDTO.Target.Country) > 2 {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Ошибка в данных запроса.",
+			})
+		}
+
+		if countryCode := countries.ByName(strings.ToUpper(promoDTO.Target.Country)); countryCode == countries.Unknown && promoDTO.Target.Country != "" {
+			return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Ошибка в данных запроса.",
+			})
+		}
 	}
 
 	newPromo, err := h.promoService.Update(c.Context(), c, promoDTO, params.ID)

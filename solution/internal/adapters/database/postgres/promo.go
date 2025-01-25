@@ -38,16 +38,16 @@ func (s *promoStorage) Create(ctx context.Context, promo entity.Promo) (*entity.
 	}
 
 	// Insert categories
-	for _, category := range promo.Categories {
-		insertCategoryQuery := s.db.WithContext(ctx).Exec("INSERT INTO categories (promo_id, name) VALUES (?, ?);", promo.PromoID, category.Name)
+	for i, category := range promo.Categories {
+		insertCategoryQuery := s.db.WithContext(ctx).Exec("INSERT INTO categories (promo_id, name, index) VALUES (?, ?, ?);", promo.PromoID, category.Name, i)
 		if err := insertCategoryQuery.Error; err != nil {
 			return nil, err
 		}
 	}
 
 	// Insert promo_uniques
-	for _, promoUnique := range promo.PromoUnique {
-		insertPromoUniqueQuery := s.db.WithContext(ctx).Exec("INSERT INTO promo_uniques (promo_id, body, activated) VALUES (?, ?, ?);", promo.PromoID, promoUnique.Body, promoUnique.Activated)
+	for i, promoUnique := range promo.PromoUnique {
+		insertPromoUniqueQuery := s.db.WithContext(ctx).Exec("INSERT INTO promo_uniques (promo_id, body, activated, index) VALUES (?, ?, ?, ?);", promo.PromoID, promoUnique.Body, promoUnique.Activated, i)
 		if err := insertPromoUniqueQuery.Error; err != nil {
 			return nil, err
 		}
@@ -136,42 +136,50 @@ func (s *promoStorage) GetByID(ctx context.Context, id string) (*entity.Promo, e
 
 func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countriesSlice []countries.CountryCode) ([]entity.Promo, int64, error) {
 	query := `
-		SELECT
-			p.promo_id,
-			p.company_id,
-			p.created_at,
-			p.updated_at,
-			p.active,
-			p.active_from,
-			p.active_until,
-			p.description,
-			p.image_url,
-			p.max_count,
-			p.mode,
-			p.like_count,
-			p.used_count,
-			p.promo_common,
-			p.age_from,
-			p.age_until,
-			p.country,
-			JSON_AGG(
-					DISTINCT jsonb_build_object(
-					'category_id', c.category_id,
-					'category_name', c.name
-							 )
-			) AS categories,
-			JSON_AGG(
-					DISTINCT jsonb_build_object(
-					'promo_unique_id', pu.promo_unique_id,
-					'promo_unique_body', pu.body,
-					'promo_unique_activated', pu.activated
-							 )
-			) AS promo_uniques
+		SELECT p.promo_id,
+			   p.company_id,
+			   p.created_at,
+			   p.updated_at,
+			   p.active,
+			   p.active_from,
+			   p.active_until,
+			   p.description,
+			   p.image_url,
+			   p.max_count,
+			   p.mode,
+			   p.like_count,
+			   p.used_count,
+			   p.promo_common,
+			   p.age_from,
+			   p.age_until,
+			   p.country,
+			   COALESCE(
+							   JSONB_AGG(
+							   jsonb_build_object(
+									   'category_id', c.category_id,
+									   'category_name', c.name,
+									   'index', c.index
+							   ) ORDER BY c.index
+									   ) FILTER (WHERE c.category_id IS NOT NULL),
+							   '[]'::jsonb
+			   ) AS categories,
+		
+			   -- Уникальные промо с сортировкой по index
+			   COALESCE(
+							   JSONB_AGG(
+							   jsonb_build_object(
+									   'promo_unique_id', pu.promo_unique_id,
+									   'promo_unique_body', pu.body,
+									   'promo_unique_activated', pu.activated,
+									   'index', pu.index
+							   ) ORDER BY pu.index
+									   ) FILTER (WHERE pu.promo_unique_id IS NOT NULL),
+							   '[]'::jsonb
+			   ) AS promo_uniques
 		FROM promos p
 				 LEFT JOIN categories c ON p.promo_id = c.promo_id
 				 LEFT JOIN promo_uniques pu ON p.promo_id = pu.promo_id
-		WHERE
-			p.company_id = ?`
+		WHERE p.company_id = ?`
 
 	if len(countriesSlice) > 0 {
 		query += ` AND (p.country IN ? OR p.country = 0)`
@@ -233,12 +241,14 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 	type Category struct {
 		CategoryID   string `json:"category_id"`
 		CategoryName string `json:"category_name"`
+		Index        int    `json:"index"`
 	}
 
 	type PromoUnique struct {
 		PromoUniqueID        string `json:"promo_unique_id"`
 		PromoUniqueBody      string `json:"promo_unique_body"`
 		PromoUniqueActivated bool   `json:"promo_unique_activated"`
+		Index                int    `json:"index"`
 	}
 
 	var results []result
@@ -311,8 +321,14 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 
 	// Получаем общее количество записей
 	var total int64
-	if err := s.db.WithContext(ctx).Raw("SELECT COUNT(*) FROM promos WHERE company_id = ? AND country IN ? OR country = null", companyId, countriesSlice).Scan(&total).Error; err != nil {
-		return nil, 0, err
+	if len(countriesSlice) > 0 {
+		if err := s.db.WithContext(ctx).Raw("SELECT COUNT(*) FROM promos WHERE company_id = ? AND (country IN ? OR country = 0)", companyId, countriesSlice).Scan(&total).Error; err != nil {
+			return nil, 0, err
+		}
+	} else {
+		if err := s.db.WithContext(ctx).Raw("SELECT COUNT(*) FROM promos WHERE company_id = ?", companyId).Scan(&total).Error; err != nil {
+			return nil, 0, err
+		}
 	}
 
 	return promos, total, nil

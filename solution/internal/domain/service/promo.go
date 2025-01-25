@@ -104,7 +104,7 @@ func (s *promoService) GetWithPagination(ctx context.Context, companyId string, 
 	return s.promoStorage.GetWithPagination(ctx, dto.Limit, dto.Offset, dto.SortBy, companyId, dto.Countries)
 }
 
-func (s *promoService) Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.PromoCreate, id string) (*entity.Promo, error) {
+func (s *promoService) Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.PromoUpdate, id string) (*entity.Promo, error) {
 	var activeFrom, activeUntil time.Time
 	var timeError error
 	if dto.ActiveFrom != "" {

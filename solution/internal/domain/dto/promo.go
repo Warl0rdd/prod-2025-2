@@ -28,6 +28,18 @@ type PromoCreateResponse struct {
 	ID string `json:"id"`
 }
 
+type PromoUpdate struct {
+	Target      *Target  `json:"target"`
+	ActiveFrom  string   `json:"active_from"`
+	ActiveUntil string   `json:"active_until"`
+	Description string   `json:"description"`
+	ImageURL    string   `json:"image_url" validate:"omitempty,url"`
+	MaxCount    int      `json:"max_count"`
+	Mode        string   `json:"mode"`
+	PromoCommon string   `json:"promo_common"`
+	PromoUnique []string `json:"promo_unique"`
+}
+
 type PromoGetWithPaginationRequest struct {
 	Limit     int      `query:"limit"`
 	Offset    int      `query:"offset"`

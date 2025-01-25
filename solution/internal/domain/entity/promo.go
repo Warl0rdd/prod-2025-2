@@ -38,10 +38,12 @@ type PromoUnique struct {
 	PromoID       string `json:"-" gorm:"not null;"`
 	Body          string `json:"-" gorm:"not null"`
 	Activated     bool   `json:"-" gorm:"default:false"`
+	Index         int    `json:"-"`
 }
 
 type Category struct {
 	CategoryID string `json:"id" gorm:"primaryKey;not null;type:uuid;default:gen_random_uuid()"`
 	PromoID    string `json:"-" gorm:"not null;"`
 	Name       string `json:"name" gorm:"not null"`
+	Index      int    `json:"-"`
 }
