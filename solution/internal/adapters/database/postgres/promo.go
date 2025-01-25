@@ -46,11 +46,12 @@ func containsPromoUnique(promoUniques []entity.PromoUnique, promoUnique entity.P
 }
 
 // Create is a method to create a new Promo in database.
+// TODO country with given register
 func (s *promoStorage) Create(ctx context.Context, promo entity.Promo) (*entity.Promo, error) {
 	// Insert a promo (parent)'s entity
 	insertPromoQuery := s.db.WithContext(ctx).Raw(
 		"INSERT INTO promos (company_id, created_at, updated_at, active_from, active_until, description, image_url, max_count, mode, promo_common, age_from, age_until, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING promo_id;",
-		promo.CompanyID, promo.CreatedAt, promo.UpdatedAt, promo.ActiveFrom, promo.ActiveUntil, promo.Description, promo.ImageURL, promo.MaxCount, promo.Mode, promo.PromoCommon, promo.AgeFrom, promo.AgeUntil, promo.Country).Scan(&promo.PromoID)
+		promo.CompanyID, time.Now(), promo.UpdatedAt, promo.ActiveFrom, promo.ActiveUntil, promo.Description, promo.ImageURL, promo.MaxCount, promo.Mode, promo.PromoCommon, promo.AgeFrom, promo.AgeUntil, promo.Country).Scan(&promo.PromoID)
 	if err := insertPromoQuery.Error; err != nil {
 		return nil, err
 	}
@@ -152,7 +153,7 @@ func (s *promoStorage) GetByID(ctx context.Context, id string) (*entity.Promo, e
 	return &promo, nil
 }
 
-// TODO fix order by
+// TODO fix order by (case)
 func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countriesSlice []countries.CountryCode) ([]entity.Promo, int64, error) {
 	var promosMap = make(map[string]*entity.Promo)
 
@@ -176,8 +177,13 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 		query += ` AND (p.country IN ? OR p.country = 0)`
 	}
 
-	if sortBy != "" {
-		query += ` ORDER BY p.` + sortBy + ` DESC`
+	switch sortBy {
+	case "active_from":
+		query += ` ORDER BY p.active_from DESC`
+	case "active_until":
+		query += ` ORDER BY p.active_until DESC`
+	default:
+		query += ` ORDER BY p.created_at DESC`
 	}
 
 	query += ` LIMIT ? OFFSET ?`
@@ -209,20 +215,12 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 
 	var results []result
 
-	if sortBy == "" && len(countriesSlice) == 0 {
-		if err := s.db.WithContext(ctx).Raw(query, companyId, limit, offset).Scan(&results).Error; err != nil {
-			return nil, 0, err
-		}
-	} else if len(countriesSlice) != 0 && sortBy == "" {
+	if len(countriesSlice) > 0 {
 		if err := s.db.WithContext(ctx).Raw(query, companyId, countriesSlice, limit, offset).Scan(&results).Error; err != nil {
 			return nil, 0, err
 		}
-	} else if len(countriesSlice) == 0 && sortBy != "" {
-		if err := s.db.WithContext(ctx).Raw(query, companyId, sortBy, limit, offset).Scan(&results).Error; err != nil {
-			return nil, 0, err
-		}
 	} else {
-		if err := s.db.WithContext(ctx).Raw(query, companyId, countriesSlice, sortBy, limit, offset).Scan(&results).Error; err != nil {
+		if err := s.db.WithContext(ctx).Raw(query, companyId, limit, offset).Scan(&results).Error; err != nil {
 			return nil, 0, err
 		}
 	}
