@@ -301,7 +301,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 	business := c.Locals("business").(*entity.Business)
 
 	if err := c.Bind().Body(&promoDTO); err != nil {
-		logger.Log.Error(err)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -309,7 +308,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 	}
 
 	if err := c.Bind().URI(&params); err != nil {
-		logger.Log.Error(err)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -317,7 +315,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 	}
 
 	if (promoDTO.Description != nil) && (len(*promoDTO.Description) < 10 || len(*promoDTO.Description) > 300) {
-		logger.Log.Error("desc len")
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -325,7 +322,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 	}
 
 	if (promoDTO.Mode != nil) && (*promoDTO.Mode != "COMMON") && (*promoDTO.Mode != "UNIQUE") {
-		logger.Log.Error("mode")
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -333,7 +329,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 	}
 
 	if (promoDTO.Mode != nil) && (promoDTO.MaxCount != nil) && (promoDTO.PromoUnique == nil || (*promoDTO.MaxCount != 1)) && *promoDTO.Mode == "UNIQUE" {
-		logger.Log.Error("unique max count")
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -344,7 +339,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 		mode := *promoDTO.Mode
 		if (mode == "COMMON" && promoDTO.PromoUnique != nil) ||
 			(mode == "UNIQUE" && promoDTO.PromoCommon != nil) {
-			logger.Log.Error("common/unique fields conflict")
 			return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 				Status:  "error",
 				Message: "Ошибка в данных запроса.",
@@ -354,7 +348,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 
 	if promoDTO.Target != nil {
 		if len(promoDTO.Target.Country) > 2 {
-			logger.Log.Error("country len")
 			return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 				Status:  "error",
 				Message: "Ошибка в данных запроса.",
@@ -362,7 +355,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 		}
 
 		if countryCode := countries.ByName(strings.ToUpper(promoDTO.Target.Country)); countryCode == countries.Unknown && promoDTO.Target.Country != "" {
-			logger.Log.Error("country not found")
 			return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 				Status:  "error",
 				Message: "Ошибка в данных запроса.",
@@ -370,7 +362,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 		}
 
 		if (promoDTO.Target.AgeFrom != 0) && (promoDTO.Target.AgeUntil != 0) && (promoDTO.Target.AgeUntil < promoDTO.Target.AgeFrom) {
-			logger.Log.Error("age until")
 			return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 				Status:  "error",
 				Message: "Ошибка в данных запроса.",
@@ -378,7 +369,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 		}
 
 		if slices.Contains(promoDTO.Target.Categories, "") || slices.Contains(promoDTO.PromoUnique, "") {
-			logger.Log.Error("empty category")
 			return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 				Status:  "error",
 				Message: "Ошибка в данных запроса.",
