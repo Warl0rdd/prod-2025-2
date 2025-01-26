@@ -9,7 +9,6 @@ import (
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
-	"solution/internal/adapters/logger"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
@@ -102,7 +101,6 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 	}
 
 	if promoDTO.Target.AgeFrom != 0 && (promoDTO.Target.AgeUntil != 0 && promoDTO.Target.AgeUntil < promoDTO.Target.AgeFrom) {
-		logger.Log.Error("age until")
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
