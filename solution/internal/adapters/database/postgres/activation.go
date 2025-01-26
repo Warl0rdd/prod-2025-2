@@ -34,9 +34,10 @@ func (s *activationStorage) ActivatePromo(ctx context.Context, age int, country 
 									 ELSE used_count
 						END,
 					active = CASE
-								 WHEN used_count >= max_count
-									 AND mode = 'COMMON' THEN false
-								 ELSE active
+								 WHEN (used_count >= max_count
+										  AND mode = 'COMMON')
+									 OR active_until < now() THEN false
+								 ELSE true
 						END
 				WHERE promo_id = ?
 				RETURNING promo_common AS promocode),
@@ -66,7 +67,7 @@ func (s *activationStorage) ActivatePromo(ctx context.Context, age int, country 
 									  WHEN EXISTS (SELECT *
 												   FROM promo_uniques pu
 												   WHERE pu.promo_id = promos.promo_id
-													 AND pu.activated = FALSE) THEN true
+													 AND pu.activated = FALSE) AND active_until > now() THEN true
 									  ELSE false
 						 END
 					 WHERE promo_id = ?

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/biter777/countries"
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
@@ -33,8 +34,8 @@ func NewPromoStorage(db *gorm.DB) *promoStorage {
 func (s *promoStorage) Create(ctx context.Context, promo entity.Promo) (*entity.Promo, error) {
 	// Insert a promo (parent)'s entity
 	insertPromoQuery := s.db.WithContext(ctx).Raw(
-		"INSERT INTO promos (company_id, created_at, updated_at, active_from, active_until, description, image_url, max_count, mode, promo_common, age_from, age_until, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING promo_id;",
-		promo.CompanyID, time.Now(), promo.UpdatedAt, promo.ActiveFrom, promo.ActiveUntil, promo.Description, promo.ImageURL, promo.MaxCount, promo.Mode, promo.PromoCommon, promo.AgeFrom, promo.AgeUntil, promo.Country).Scan(&promo.PromoID)
+		"INSERT INTO promos (company_id, created_at, updated_at, active_from, active_until, description, image_url, max_count, mode, promo_common, age_from, age_until, country, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING promo_id;",
+		promo.CompanyID, time.Now(), promo.UpdatedAt, promo.ActiveFrom, promo.ActiveUntil, promo.Description, promo.ImageURL, promo.MaxCount, promo.Mode, promo.PromoCommon, promo.AgeFrom, promo.AgeUntil, promo.Country, promo.Active).Scan(&promo.PromoID)
 	if err := insertPromoQuery.Error; err != nil {
 		return nil, err
 	}
@@ -433,7 +434,8 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 			mode = COALESCE(?, mode),
 			promo_common = COALESCE(?, promo_common),
 			age_from = COALESCE(?, age_from),
-			age_until = COALESCE(?, age_until)`
+			age_until = COALESCE(?, age_until),
+			active = COALESCE(?, active)`
 
 	if promo.Target != nil && promo.Target.Country != "" {
 		queryUpdate += `, country = COALESCE(?, country)`
@@ -466,6 +468,15 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 		return nil, errorz.BadRequest
 	}
 
+	var active *bool
+
+	currentActive := oldPromo.Active
+	active = &currentActive
+
+	if oldPromo.ActiveFrom.After(time.Now()) || oldPromo.ActiveUntil.Before(time.Now()) {
+		*active = false
+	}
+
 	var activeFrom, activeUntil *time.Time
 	var timeError error
 	if promo.ActiveFrom != nil {
@@ -489,6 +500,14 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 
 			return nil, errorz.BadRequest
 		}
+	}
+
+	if activeFrom != nil && activeFrom.After(time.Now()) {
+		*active = false
+	}
+
+	if activeUntil != nil && activeUntil.Before(time.Now()) {
+		*active = false
 	}
 
 	var ageFrom, ageUntil *int
@@ -518,6 +537,7 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 			promo.PromoCommon,
 			ageFrom,
 			ageUntil,
+			active,
 			countries.ByName(promo.Target.Country),
 			id).Error; err != nil {
 			return nil, err
@@ -533,6 +553,7 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 			promo.PromoCommon,
 			ageFrom,
 			ageUntil,
+			active,
 			id).Error; err != nil {
 			return nil, err
 		}
@@ -565,68 +586,57 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 	return newPromo, nil
 }
 
-func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active, userID string) ([]dto.PromoForUser, int64, error) {
-	query := `
-		SELECT p.promo_id,
-			   p.company_id,
-			   p.description,
-			   p.image_url,
-			   p.active,
-			   p.like_count,
-			   p.comment_count,
-			   EXISTS(SELECT * from activations a WHERE a.user_id = ? AND a.promo_id = p.promo_id) AS is_activated,
-			   c.name AS category_name,
-			   b.name AS business_name,
-			   b.id   AS business_id
-		FROM promos p
-				 INNER JOIN categories c ON c.name = ? AND c.promo_id = p.promo_id
-				 INNER JOIN businesses b ON b.id = p.company_id
-		WHERE p.age_from <= ?
-		  AND p.age_until >= ?
-		  AND p.country = ?
-		LIMIT ? OFFSET ?`
+func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category *string, active, userID string) ([]dto.PromoForUser, int64, error) {
+	baseQuery := `
+        SELECT 
+            p.promo_id,
+            p.company_id,
+            p.description,
+            p.image_url,
+            p.active,
+            p.like_count,
+            p.comment_count,
+            EXISTS(SELECT 1 FROM activations a WHERE a.user_id = ? AND a.promo_id = p.promo_id) AS is_activated,
+            c.name AS category_name,
+            b.name AS business_name,
+            b.id AS business_id
+        FROM promos p
+        %s JOIN categories c ON c.promo_id = p.promo_id %s
+        INNER JOIN businesses b ON b.id = p.company_id
+        WHERE p.age_from <= ?
+          AND p.age_until >= ?
+          AND (p.country = ? OR p.country = 0)
+          %s  -- Условие active
+        ORDER BY p.created_at DESC
+        LIMIT ? OFFSET ?`
 
-	queryCount := `
-		SELECT COUNT(*)
-		FROM promos p
-				 INNER JOIN categories c ON c.name = ? AND c.promo_id = p.promo_id
-				 INNER JOIN businesses b ON b.id = p.company_id
-		WHERE p.age_from <= ?
-		  AND p.age_until >= ?
-		  AND p.country = ?`
+	baseCountQuery := `
+        SELECT COUNT(*)
+        FROM promos p
+        %s JOIN categories c ON c.promo_id = p.promo_id %s
+        INNER JOIN businesses b ON b.id = p.company_id
+        WHERE p.age_from <= ?
+          AND p.age_until >= ?
+          AND (p.country = ? OR p.country = 0)
+          %s --Active`
 
-	if active != "" {
-		query = `
-			SELECT p.promo_id,
-				   p.company_id,
-				   p.description,
-				   p.image_url,
-				   p.active,
-				   p.like_count,
-				   p.comment_count,
-				   EXISTS(SELECT * from activations a WHERE a.user_id = ? AND a.promo_id = p.promo_id) AS is_activated,
-				   c.name AS category_name,
-				   b.name AS business_name,
-				   b.id   AS business_id
-			FROM promos p
-					 INNER JOIN categories c ON c.name = ? AND c.promo_id = p.promo_id
-					 INNER JOIN businesses b ON b.id = p.company_id
-			WHERE p.age_from <= ?
-			  AND p.age_until >= ?
-			  AND p.country = ?
-			  AND p.active = ?
-			LIMIT ? OFFSET ?`
-
-		queryCount = `
-		SELECT COUNT(*)
-		FROM promos p
-				 INNER JOIN categories c ON c.name = ? AND c.promo_id = p.promo_id
-				 INNER JOIN businesses b ON b.id = p.company_id
-		WHERE p.age_from <= ?
-		  AND p.age_until >= ?
-		  AND p.country = ?
-          AND p.active = ?`
+	// Определяем тип JOIN и условия для категории
+	joinType := "LEFT"
+	categoryCondition := ""
+	if category != nil {
+		joinType = "INNER"
+		categoryCondition = "AND LOWER(c.name) = LOWER(?)"
 	}
+
+	// Добавляем условие active, если нужно
+	activeCondition := ""
+	if active != "" {
+		activeCondition = "AND p.active = ?"
+	}
+
+	// Формируем итоговые запросы
+	query := fmt.Sprintf(baseQuery, joinType, categoryCondition, activeCondition)
+	queryCount := fmt.Sprintf(baseCountQuery, joinType, categoryCondition, activeCondition)
 
 	type result struct {
 		PromoID      string
@@ -642,19 +652,26 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 	}
 
 	var results []result
+	var args []interface{}
 
+	// Параметры запроса
+	args = append(args, userID)
+	if category != nil {
+		args = append(args, *category)
+	}
+	args = append(args, age, age, country)
 	if active != "" {
-		if err := s.db.WithContext(ctx).Raw(query, userID, category, age, age, country, active, limit, offset).Scan(&results).Error; err != nil {
-			return nil, 0, err
-		}
-	} else {
-		if err := s.db.WithContext(ctx).Raw(query, userID, category, age, age, country, limit, offset).Scan(&results).Error; err != nil {
-			return nil, 0, err
-		}
+		args = append(args, active)
+	}
+	args = append(args, limit, offset)
+
+	// Выполнение основного запроса
+	if err := s.db.WithContext(ctx).Raw(query, args...).Scan(&results).Error; err != nil {
+		return nil, 0, err
 	}
 
+	// Преобразование результатов
 	var promos []dto.PromoForUser
-
 	for _, r := range results {
 		promos = append(promos, dto.PromoForUser{
 			PromoID:           r.PromoID,
@@ -669,15 +686,18 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 		})
 	}
 
-	var total int64
+	var countArgs []interface{}
+	if category != nil {
+		countArgs = append(countArgs, *category)
+	}
+	countArgs = append(countArgs, age, age, country)
 	if active != "" {
-		if err := s.db.WithContext(ctx).Raw(queryCount, category, age, age, country, active).Scan(&total).Error; err != nil {
-			return nil, 0, err
-		}
-	} else {
-		if err := s.db.WithContext(ctx).Raw(queryCount, category, age, age, country).Scan(&total).Error; err != nil {
-			return nil, 0, err
-		}
+		countArgs = append(countArgs, active)
+	}
+
+	var total int64
+	if err := s.db.WithContext(ctx).Raw(queryCount, countArgs...).Scan(&total).Error; err != nil {
+		return nil, 0, err
 	}
 
 	return promos, total, nil
@@ -731,6 +751,10 @@ func (s *promoStorage) GetByIdUser(ctx context.Context, promoID, userID string) 
 		IsLikedByUser:     s.actionsStorage.IsLikedByUser(ctx, userID, promoID),
 		IsActivatedByUser: queryResult.IsActivated,
 		UsedCount:         queryResult.CommentCount,
+	}
+
+	if promo.PromoID == "" {
+		return promo, errorz.NotFound
 	}
 
 	return promo, nil

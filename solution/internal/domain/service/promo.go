@@ -16,7 +16,7 @@ type promoStorage interface {
 	GetByID(ctx context.Context, id string) (*entity.Promo, error)
 	Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto.PromoUpdate, id string) (*entity.Promo, error)
 	GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countries []countries.CountryCode) ([]entity.Promo, int64, error)
-	GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active, userID string) ([]dto.PromoForUser, int64, error)
+	GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category *string, active, userID string) ([]dto.PromoForUser, int64, error)
 	GetByIdUser(ctx context.Context, promoID, userID string) (dto.PromoForUser, error)
 	GetHistory(ctx context.Context, userID string, limit, offset int) ([]dto.PromoForUser, int64, error)
 	GetStats(ctx context.Context, promoID, companyID string) (dto.PromoStatsResponse, error)
@@ -84,7 +84,7 @@ func (s *promoService) Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO 
 
 	promo := entity.Promo{
 		CompanyID:   company.ID,
-		Active:      true,
+		Active:      promoDTO.Active,
 		ActiveFrom:  activeFrom,
 		ActiveUntil: activeUntil,
 		Description: promoDTO.Description,
@@ -98,8 +98,18 @@ func (s *promoService) Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO 
 
 	if promoDTO.Target != nil {
 		promo.Country = countries.ByName(strings.ToUpper(promoDTO.Target.Country))
-		promo.AgeFrom = promoDTO.Target.AgeFrom
 		promo.AgeUntil = promoDTO.Target.AgeUntil
+		if promoDTO.Target.AgeUntil == 0 {
+			promo.AgeUntil = 1000
+		}
+		promo.AgeFrom = promoDTO.Target.AgeFrom
+	} else {
+		promo.AgeFrom = 0
+		promo.AgeUntil = 1000
+	}
+
+	if activeFrom.After(time.Now()) || activeUntil.Before(time.Now()) {
+		promo.Active = false
 	}
 
 	company.Promos = append(company.Promos, promo)

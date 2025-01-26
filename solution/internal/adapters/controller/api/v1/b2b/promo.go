@@ -9,6 +9,7 @@ import (
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
+	"solution/internal/adapters/logger"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
@@ -45,6 +46,7 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 	var promoDTO dto.PromoCreate
 
 	if err := c.Bind().Body(&promoDTO); err != nil {
+		logger.Log.Error(err)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -52,6 +54,7 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 	}
 
 	if errValidate := h.validator.ValidateData(promoDTO); errValidate != nil {
+		logger.Log.Error(errValidate)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -105,6 +108,19 @@ func (h PromoHandler) create(c fiber.Ctx) error {
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
 		})
+	}
+
+	if promoDTO.MaxCount < 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if promoDTO.MaxCount == 0 {
+		promoDTO.Active = false
+	} else {
+		promoDTO.Active = true
 	}
 
 	promo, err := h.promoService.Create(c.Context(), c, promoDTO)

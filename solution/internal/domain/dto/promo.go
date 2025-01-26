@@ -11,10 +11,11 @@ type PromoCreate struct {
 	ActiveUntil string   `json:"active_until"`
 	Description string   `json:"description" validate:"required"`
 	ImageURL    string   `json:"image_url" validate:"omitempty,url"`
-	MaxCount    int      `json:"max_count" validate:"required"`
+	MaxCount    int      `json:"max_count" validate:"omitempty,required"`
 	Mode        string   `json:"mode"`
 	PromoCommon string   `json:"promo_common"`
 	PromoUnique []string `json:"promo_unique"`
+	Active      bool
 }
 
 type Target struct {
@@ -84,10 +85,10 @@ type PromoGetWithPaginationResponse struct {
 }
 
 type PromoFeedRequest struct {
-	Limit    int    `query:"limit"`
-	Offset   int    `query:"offset"`
-	Category string `query:"category"`
-	Active   string `query:"active"`
+	Limit    int     `query:"limit"`
+	Offset   int     `query:"offset"`
+	Category *string `query:"category"`
+	Active   string  `query:"active"`
 }
 
 // PromoForUser promoDTO for user's feed

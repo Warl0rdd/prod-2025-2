@@ -2,10 +2,12 @@ package b2c
 
 import (
 	"context"
+	"errors"
 	"github.com/gofiber/fiber/v3"
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
+	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"solution/internal/domain/service"
@@ -33,7 +35,6 @@ func NewUserPromoHandler(app *app.App) *UserPromoHandler {
 	}
 }
 
-// GetFeed TODO category not required
 func (h UserPromoHandler) GetFeed(c fiber.Ctx) error {
 	var requestDTO dto.PromoFeedRequest
 
@@ -100,6 +101,13 @@ func (h UserPromoHandler) GetPromoByID(c fiber.Ctx) error {
 	promo, err := h.PromoService.GetByIdUser(c.Context(), requestDTO.ID, user.ID)
 
 	if err != nil {
+		if errors.Is(err, errorz.NotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Промо не найдено.",
+			})
+		}
+
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: err.Error(),
