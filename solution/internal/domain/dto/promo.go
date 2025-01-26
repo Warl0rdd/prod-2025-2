@@ -29,15 +29,15 @@ type PromoCreateResponse struct {
 }
 
 type PromoUpdate struct {
-	Target      *Target  `json:"target"`
-	ActiveFrom  string   `json:"active_from"`
-	ActiveUntil string   `json:"active_until"`
-	Description string   `json:"description"`
-	ImageURL    string   `json:"image_url" validate:"omitempty,url"`
-	MaxCount    int      `json:"max_count"`
-	Mode        string   `json:"mode"`
-	PromoCommon string   `json:"promo_common"`
-	PromoUnique []string `json:"promo_unique"`
+	Target      *Target  `json:"target,omitempty"`
+	ActiveFrom  *string  `json:"active_from,omitempty"`
+	ActiveUntil *string  `json:"active_until,omitempty"`
+	Description *string  `json:"description,omitempty"`
+	ImageURL    *string  `json:"image_url,omitempty" validate:"omitempty,url"`
+	MaxCount    *int     `json:"max_count,omitempty"`
+	Mode        *string  `json:"mode,omitempty"`
+	PromoCommon *string  `json:"promo_common,omitempty"`
+	PromoUnique []string `json:"promo_unique,omitempty"`
 }
 
 type PromoGetWithPaginationRequest struct {

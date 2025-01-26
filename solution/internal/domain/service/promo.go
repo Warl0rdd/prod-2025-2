@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/biter777/countries"
 	"github.com/gofiber/fiber/v3"
+	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"strings"
@@ -13,7 +14,7 @@ import (
 type promoStorage interface {
 	Create(ctx context.Context, promo entity.Promo) (*entity.Promo, error)
 	GetByID(ctx context.Context, id string) (*entity.Promo, error)
-	Update(ctx context.Context, fiberCtx fiber.Ctx, promo *entity.Promo, id string) (*entity.Promo, error)
+	Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto.PromoUpdate, id string) (*entity.Promo, error)
 	GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countries []countries.CountryCode) ([]entity.Promo, int64, error)
 	GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active, userID string) ([]dto.PromoForUser, int64, error)
 	GetByIdUser(ctx context.Context, promoID, userID string) (dto.PromoForUser, error)
@@ -39,14 +40,28 @@ func (s *promoService) Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO 
 	if promoDTO.ActiveFrom != "" {
 		activeFrom, timeError = time.Parse("2006-01-02", promoDTO.ActiveFrom)
 		if timeError != nil {
-			return nil, timeError
+			//activeFrom, timeError = time.Parse("2006-01-02 15:04:05", promoDTO.ActiveFrom)
+			//if timeError != nil {
+			//	return nil, timeError
+			//}
+
+			return nil, errorz.BadRequest
 		}
+	} else {
+		activeFrom = time.Unix(0, 0)
 	}
 	if promoDTO.ActiveUntil != "" {
 		activeUntil, timeError = time.Parse("2006-01-02", promoDTO.ActiveUntil)
 		if timeError != nil {
-			return nil, timeError
+			//activeUntil, timeError = time.Parse("2006-01-02 15:04:05", promoDTO.ActiveUntil)
+			//if timeError != nil {
+			//	return nil, timeError
+			//}
+
+			return nil, errorz.BadRequest
 		}
+	} else {
+		activeUntil = time.Unix(8210266876, 0)
 	}
 
 	var categories []entity.Category
@@ -105,56 +120,7 @@ func (s *promoService) GetWithPagination(ctx context.Context, companyId string, 
 }
 
 func (s *promoService) Update(ctx context.Context, fiberCtx fiber.Ctx, dto dto.PromoUpdate, id string) (*entity.Promo, error) {
-	var activeFrom, activeUntil time.Time
-	var timeError error
-	if dto.ActiveFrom != "" {
-		activeFrom, timeError = time.Parse("2006-01-02", dto.ActiveFrom)
-		if timeError != nil {
-			return nil, timeError
-		}
-	}
-	if dto.ActiveUntil != "" {
-		activeUntil, timeError = time.Parse("2006-01-02", dto.ActiveUntil)
-		if timeError != nil {
-			return nil, timeError
-		}
-	}
-
-	var categories []entity.Category
-	var promoUniques []entity.PromoUnique
-	if dto.Target != nil {
-		for _, category := range dto.Target.Categories {
-			categories = append(categories, entity.Category{
-				Name: category,
-			})
-		}
-		for _, promoUnique := range dto.PromoUnique {
-			promoUniques = append(promoUniques, entity.PromoUnique{
-				Body: promoUnique,
-			})
-		}
-	}
-
-	promo := entity.Promo{
-		Categories:  categories,
-		Active:      true,
-		ActiveFrom:  activeFrom,
-		ActiveUntil: activeUntil,
-		Description: dto.Description,
-		ImageURL:    dto.ImageURL,
-		MaxCount:    dto.MaxCount,
-		Mode:        dto.Mode,
-		PromoCommon: dto.PromoCommon,
-		PromoUnique: promoUniques,
-	}
-
-	if dto.Target != nil {
-		promo.Country = countries.ByName(strings.ToUpper(dto.Target.Country))
-		promo.AgeFrom = dto.Target.AgeFrom
-		promo.AgeUntil = dto.Target.AgeUntil
-	}
-
-	return s.promoStorage.Update(ctx, fiberCtx, &promo, id)
+	return s.promoStorage.Update(ctx, fiberCtx, dto, id)
 }
 
 func (s *promoService) GetFeed(ctx context.Context, user *entity.User, dto dto.PromoFeedRequest) ([]dto.PromoForUser, int64, error) {

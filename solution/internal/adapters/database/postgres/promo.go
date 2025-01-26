@@ -6,9 +6,11 @@ import (
 	"github.com/biter777/countries"
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
+	"solution/internal/adapters/logger"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
+	"solution/internal/domain/utils/pointers"
 	"time"
 )
 
@@ -57,81 +59,162 @@ func (s *promoStorage) Create(ctx context.Context, promo entity.Promo) (*entity.
 }
 
 // GetByID is a method that returns an error and a pointer to a Promo instance by id.
-func (s *promoStorage) GetByID(ctx context.Context, id string) (*entity.Promo, error) {
-	var promo entity.Promo
-
+func (s *promoStorage) GetByID(ctx context.Context, promoId string) (*entity.Promo, error) {
 	query := `
-		SELECT 
-			p.*, 
-			c.category_id, c.name, 
-			pu.promo_unique_id, pu.body, pu.activated
-		FROM 
-			promos p
-		LEFT JOIN 
-			categories c ON p.promo_id = c.promo_id
-		LEFT JOIN 
-			promo_uniques pu ON p.promo_id = pu.promo_id
-		WHERE 
-			p.promo_id = ?
-	`
+        SELECT p.promo_id,
+               p.company_id,
+               p.created_at,
+               p.updated_at,
+               p.active,
+               p.active_from,
+               p.active_until,
+               p.description,
+               p.image_url,
+               p.max_count,
+               p.mode,
+               p.like_count,
+               p.used_count,
+               p.promo_common,
+               p.age_from,
+               p.age_until,
+               p.country,
+               COALESCE(
+                           JSONB_AGG(
+                           jsonb_build_object(
+                                   'category_id', c.category_id,
+                                   'category_name', c.name,
+                                   'index', c.index
+                           ) ORDER BY c.index
+                                   ) FILTER (WHERE c.category_id IS NOT NULL),
+                           '[]'::jsonb
+               ) AS categories,
+        
+               COALESCE(
+                           JSONB_AGG(
+                           jsonb_build_object(
+                                   'promo_unique_id', pu.promo_unique_id,
+                                   'promo_unique_body', pu.body,
+                                   'promo_unique_activated', pu.activated,
+                                   'index', pu.index
+                           ) ORDER BY pu.index
+                                   ) FILTER (WHERE pu.promo_unique_id IS NOT NULL),
+                           '[]'::jsonb
+               ) AS promo_uniques
+        FROM promos p
+                 LEFT JOIN categories c ON p.promo_id = c.promo_id
+                 LEFT JOIN promo_uniques pu ON p.promo_id = pu.promo_id
+        WHERE p.promo_id = ?
+        GROUP BY
+            p.promo_id,
+            p.company_id,
+            p.created_at,
+            p.updated_at,
+            p.active,
+            p.active_from,
+            p.active_until,
+            p.description,
+            p.image_url,
+            p.max_count,
+            p.mode,
+            p.like_count,
+            p.used_count,
+            p.promo_common,
+            p.age_from,
+            p.age_until,
+            p.country`
 
-	// Временные структуры для хранения данных
 	type result struct {
-		entity.Promo
-		CategoryID    string
-		Name          string
-		PromoUniqueID string
-		Body          string
-		Activated     bool
+		PromoID      string
+		CompanyID    string
+		CreatedAt    time.Time
+		UpdatedAt    time.Time
+		Active       bool
+		ActiveFrom   time.Time
+		ActiveUntil  time.Time
+		Description  string
+		ImageURL     string
+		MaxCount     int
+		Mode         string
+		LikeCount    int
+		UsedCount    int
+		PromoCommon  string
+		AgeFrom      int
+		AgeUntil     int
+		Country      countries.CountryCode
+		Categories   *string
+		PromoUniques *string
 	}
 
-	var results []result
-
-	// Выполнение запроса
-	if err := s.db.WithContext(ctx).Raw(query, id).Scan(&results).Error; err != nil {
+	var res result
+	if err := s.db.WithContext(ctx).Raw(query, promoId).Scan(&res).Error; err != nil {
 		return nil, err
 	}
 
-	// Обработка результатов
-	if len(results) == 0 {
-		return nil, errorz.NotFound
+	if res.PromoID == "" {
+		return nil, nil
 	}
 
-	promo = results[0].Promo
+	var categories []struct {
+		CategoryID   string `json:"category_id"`
+		CategoryName string `json:"category_name"`
+		Index        int    `json:"index"`
+	}
 
-	// Уникальные категории и промокоды
-	categoryMap := make(map[string]entity.Category)
-	promoUniqueMap := make(map[string]entity.PromoUnique)
-
-	for _, r := range results {
-		if r.CategoryID != "" {
-			categoryMap[r.CategoryID] = entity.Category{
-				CategoryID: r.CategoryID,
-				PromoID:    id,
-				Name:       r.Name,
-			}
-		}
-
-		if r.PromoUniqueID != "" {
-			promoUniqueMap[r.PromoUniqueID] = entity.PromoUnique{
-				PromoUniqueID: r.PromoUniqueID,
-				PromoID:       id,
-				Body:          r.Body,
-				Activated:     r.Activated,
-			}
+	if res.Categories != nil {
+		if err := json.Unmarshal([]byte(*res.Categories), &categories); err != nil {
+			return nil, err
 		}
 	}
 
-	// Конвертация мап в массивы
-	for _, category := range categoryMap {
-		promo.Categories = append(promo.Categories, category)
+	var promoUniques []struct {
+		PromoUniqueID        string `json:"promo_unique_id"`
+		PromoUniqueBody      string `json:"promo_unique_body"`
+		PromoUniqueActivated bool   `json:"promo_unique_activated"`
+		Index                int    `json:"index"`
 	}
 
-	for _, promoUnique := range promoUniqueMap {
-		promo.PromoUnique = append(promo.PromoUnique, promoUnique)
+	if res.PromoUniques != nil {
+		if err := json.Unmarshal([]byte(*res.PromoUniques), &promoUniques); err != nil {
+			return nil, err
+		}
 	}
 
-	return &promo, nil
+	promo := &entity.Promo{
+		PromoID:     res.PromoID,
+		CompanyID:   res.CompanyID,
+		CreatedAt:   res.CreatedAt,
+		UpdatedAt:   res.UpdatedAt,
+		Active:      res.Active,
+		ActiveFrom:  res.ActiveFrom,
+		ActiveUntil: res.ActiveUntil,
+		Description: res.Description,
+		ImageURL:    res.ImageURL,
+		MaxCount:    res.MaxCount,
+		Mode:        res.Mode,
+		LikeCount:   res.LikeCount,
+		UsedCount:   res.UsedCount,
+		PromoCommon: res.PromoCommon,
+		AgeFrom:     res.AgeFrom,
+		AgeUntil:    res.AgeUntil,
+		Country:     res.Country,
+	}
+
+	for _, category := range categories {
+		promo.Categories = append(promo.Categories, entity.Category{
+			CategoryID: category.CategoryID,
+			Name:       category.CategoryName,
+		})
+	}
+
+	for _, pu := range promoUniques {
+		promo.PromoUnique = append(promo.PromoUnique, entity.PromoUnique{
+			PromoUniqueID: pu.PromoUniqueID,
+			Body:          pu.PromoUniqueBody,
+			Activated:     pu.PromoUniqueActivated,
+		})
+	}
+
+	return promo, nil
 }
 
 func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int, sortBy, companyId string, countriesSlice []countries.CountryCode) ([]entity.Promo, int64, error) {
@@ -335,27 +418,151 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 }
 
 // Update is a method to update an existing Promo in database.
-func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo *entity.Promo, id string) (*entity.Promo, error) {
+func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto.PromoUpdate, id string) (*entity.Promo, error) {
 	var oldPromo entity.Promo
+	companyID := fiberCtx.Locals("business").(*entity.Business).ID
 
-	var total int64
-	if _ = s.db.WithContext(ctx).Model(&entity.Promo{}).Where("promo_id = ?", id).Count(&total); total == 0 {
+	queryUpdate := `
+		UPDATE promos
+		SET
+		    active_from = COALESCE(?, active_from),
+    		active_until = COALESCE(?, active_until),
+			description = COALESCE(?, description),
+			image_url = COALESCE(?, image_url),
+			max_count = COALESCE(?, max_count),
+			mode = COALESCE(?, mode),
+			promo_common = COALESCE(?, promo_common),
+			age_from = COALESCE(?, age_from),
+			age_until = COALESCE(?, age_until)`
+
+	if promo.Target != nil && promo.Target.Country != "" {
+		queryUpdate += `, country = COALESCE(?, country)`
+	}
+
+	queryUpdate += `WHERE promo_id = ?`
+
+	queryUpdateCategories := `
+		INSERT INTO categories (promo_id, name, index)
+		VALUES
+			(?, ?, ?)`
+
+	queryUpdatePromoUniques := `
+		INSERT INTO promo_uniques (promo_id, body, activated, index)
+		VALUES
+			(?, ?, ?, ?)`
+
+	findOldPromoQuery := s.db.WithContext(ctx).Where("promo_id = ?", id).First(&oldPromo)
+
+	if findOldPromoQuery.Error != nil {
 		return nil, errorz.NotFound
 	}
 
-	s.db.WithContext(ctx).Model(&entity.Promo{}).Where("promo_id = ?", id).First(&oldPromo)
-
-	if oldPromo.CompanyID != fiberCtx.Locals("business").(*entity.Business).ID {
+	if oldPromo.CompanyID != companyID {
 		return nil, errorz.Forbidden
 	}
 
-	query := s.db.WithContext(ctx).Model(&entity.Promo{}).Where("promo_id = ?", promo.PromoID).Updates(&promo)
-
-	if query.RowsAffected == 0 {
-		return nil, errorz.NotFound
+	if (promo.MaxCount != nil) && oldPromo.Mode == "UNIQUE" && (promo.PromoUnique == nil || (*promo.MaxCount != 1)) {
+		logger.Log.Error("unique max count")
+		return nil, errorz.BadRequest
 	}
 
-	return promo, query.Error
+	var activeFrom, activeUntil *time.Time
+	var timeError error
+	if promo.ActiveFrom != nil {
+		activeFrom, timeError = pointers.Time(time.Parse("2006-01-02", *promo.ActiveFrom))
+		if timeError != nil {
+			//activeFrom, timeError = pointers.Time(time.Parse("2006-01-02 15:04:05", *promo.ActiveFrom))
+			//if timeError != nil {
+			//	return nil, timeError
+			//}
+
+			return nil, errorz.BadRequest
+		}
+	}
+	if promo.ActiveUntil != nil {
+		activeUntil, timeError = pointers.Time(time.Parse("2006-01-02", *promo.ActiveUntil))
+		if timeError != nil {
+			//activeUntil, timeError = pointers.Time(time.Parse("2006-01-02 15:04:05", *promo.ActiveUntil))
+			//if timeError != nil {
+			//	return nil, timeError
+			//}
+
+			return nil, errorz.BadRequest
+		}
+	}
+
+	var ageFrom, ageUntil *int
+
+	if promo.Target != nil {
+		if promo.Target.AgeFrom == 0 {
+			ageFrom = nil
+		} else {
+			ageFrom = &promo.Target.AgeFrom
+		}
+
+		if promo.Target.AgeUntil == 0 {
+			ageUntil = nil
+		} else {
+			ageUntil = &promo.Target.AgeUntil
+		}
+	}
+
+	if promo.Target != nil && promo.Target.Country != "" {
+		if err := s.db.WithContext(ctx).Exec(queryUpdate,
+			activeFrom,
+			activeUntil,
+			promo.Description,
+			promo.ImageURL,
+			promo.MaxCount,
+			promo.Mode,
+			promo.PromoCommon,
+			ageFrom,
+			ageUntil,
+			countries.ByName(promo.Target.Country),
+			id).Error; err != nil {
+			return nil, err
+		}
+	} else {
+		if err := s.db.WithContext(ctx).Exec(queryUpdate,
+			activeFrom,
+			activeUntil,
+			promo.Description,
+			promo.ImageURL,
+			promo.MaxCount,
+			promo.Mode,
+			promo.PromoCommon,
+			ageFrom,
+			ageUntil,
+			id).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	if promo.Target != nil && promo.Target.Categories != nil {
+		s.db.WithContext(ctx).Exec(`DELETE FROM categories WHERE promo_id = ?`, id)
+		for i, category := range promo.Target.Categories {
+			if err := s.db.WithContext(ctx).Exec(queryUpdateCategories, id, category, i).Error; err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if promo.PromoUnique != nil {
+		s.db.WithContext(ctx).Exec(`DELETE FROM promo_uniques WHERE promo_id = ?`, id)
+		for i, promoUnique := range promo.PromoUnique {
+			if err := s.db.WithContext(ctx).Exec(queryUpdatePromoUniques, id, promoUnique, i).Error; err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	newPromo, err := s.GetByID(ctx, id)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return newPromo, nil
 }
 
 func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, country countries.CountryCode, category, active, userID string) ([]dto.PromoForUser, int64, error) {
