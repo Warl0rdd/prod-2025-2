@@ -683,6 +683,7 @@ func (s *promoStorage) GetFeed(ctx context.Context, age, limit, offset int, coun
 			IsLikedByUser:     s.actionsStorage.IsLikedByUser(ctx, userID, r.PromoID),
 			IsActivatedByUser: r.IsActivated,
 			LikeCount:         r.LikeCount,
+			CommentCount:      r.CommentCount,
 		})
 	}
 
@@ -748,6 +749,7 @@ func (s *promoStorage) GetByIdUser(ctx context.Context, promoID, userID string) 
 		ImageURL:          queryResult.ImageURL,
 		Active:            queryResult.Active,
 		LikeCount:         queryResult.LikeCount,
+		CommentCount:      queryResult.CommentCount,
 		IsLikedByUser:     s.actionsStorage.IsLikedByUser(ctx, userID, promoID),
 		IsActivatedByUser: queryResult.IsActivated,
 		UsedCount:         queryResult.CommentCount,
@@ -807,6 +809,7 @@ func (s *promoStorage) GetHistory(ctx context.Context, userID string, limit, off
 			ImageURL:          r.ImageURL,
 			Active:            r.Active,
 			LikeCount:         r.LikeCount,
+			CommentCount:      r.CommentCount,
 			IsLikedByUser:     s.actionsStorage.IsLikedByUser(ctx, userID, r.PromoID),
 			IsActivatedByUser: r.IsActivated,
 			UsedCount:         r.CommentCount,

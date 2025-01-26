@@ -100,6 +100,7 @@ type PromoForUser struct {
 	ImageURL          string `json:"image_url"`
 	Active            bool   `json:"active"`
 	LikeCount         int    `json:"like_count"`
+	CommentCount      int    `json:"comment_count"`
 	IsLikedByUser     bool   `json:"is_liked_by_user"`
 	IsActivatedByUser bool   `json:"is_activated_by_user"`
 	UsedCount         int    `json:"used_count"`

@@ -13,13 +13,14 @@ import (
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"solution/internal/domain/service"
+	"strconv"
 )
 
 type ActionsService interface {
 	AddLike(ctx context.Context, userID, promoID string) error
 	DeleteLike(ctx context.Context, userID, promoID string) error
-	AddComment(ctx context.Context, userID, promoID, text string) error
-	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error)
+	AddComment(ctx context.Context, userID, promoID, text string) (string, error)
+	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, int64, error)
 	GetCommentById(ctx context.Context, commentID, promoID string) (dto.Comment, error)
 	UpdateComment(ctx context.Context, promoID, commentID, userID, text string) (dto.Comment, error)
 	DeleteComment(ctx context.Context, promoID, commentID, userID string) error
@@ -131,7 +132,7 @@ func (h ActionsHandler) addComment(c fiber.Ctx) error {
 		})
 	}
 
-	err := h.actionsService.AddComment(c.Context(), user.ID, commentDTO.PromoID, commentDTO.Text)
+	id, err := h.actionsService.AddComment(c.Context(), user.ID, commentDTO.PromoID, commentDTO.Text)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
@@ -140,11 +141,19 @@ func (h ActionsHandler) addComment(c fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(dto.HTTPResponse{
-		Status: "ok",
-	})
+	comment, errGet := h.actionsService.GetCommentById(c.Context(), id, commentDTO.PromoID)
+
+	if errGet != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка сервера.",
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(comment)
 }
 
+// TODO negative limit
 func (h ActionsHandler) getComments(ctx fiber.Ctx) error {
 	var getCommentsDTO dto.GetComments
 
@@ -169,7 +178,11 @@ func (h ActionsHandler) getComments(ctx fiber.Ctx) error {
 		})
 	}
 
-	comments, err := h.actionsService.GetComments(ctx.Context(), getCommentsDTO.ID, getCommentsDTO.Limit, getCommentsDTO.Offset)
+	if getCommentsDTO.Limit == 0 {
+		getCommentsDTO.Limit = 10
+	}
+
+	comments, total, err := h.actionsService.GetComments(ctx.Context(), getCommentsDTO.ID, getCommentsDTO.Limit, getCommentsDTO.Offset)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
@@ -177,6 +190,8 @@ func (h ActionsHandler) getComments(ctx fiber.Ctx) error {
 			Message: "Ошибка сервера.",
 		})
 	}
+
+	ctx.Append("X-Total-Count", strconv.FormatInt(total, 10))
 
 	return ctx.Status(fiber.StatusOK).JSON(comments)
 }
@@ -198,13 +213,20 @@ func (h ActionsHandler) getCommentById(ctx fiber.Ctx) error {
 		})
 	}
 
-	comment, err := h.actionsService.GetCommentById(ctx.Context(), getCommentDTO.ID, getCommentDTO.CommentID)
+	comment, err := h.actionsService.GetCommentById(ctx.Context(), getCommentDTO.CommentID, getCommentDTO.ID)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
-			Status:  "error",
-			Message: "Ошибка сервера.",
-		})
+		if errors.Is(err, errorz.NotFound) {
+			return ctx.Status(fiber.StatusNotFound).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Комментарий не найден.",
+			})
+		} else {
+			return ctx.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Ошибка сервера.",
+			})
+		}
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(comment)
@@ -242,6 +264,11 @@ func (h ActionsHandler) updateComment(c fiber.Ctx) error {
 			return c.Status(fiber.StatusForbidden).JSON(dto.HTTPResponse{
 				Status:  "error",
 				Message: "Недостаточно прав.",
+			})
+		} else if errors.Is(err, errorz.NotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(dto.HTTPResponse{
+				Status:  "error",
+				Message: "Комментарий не найден.",
 			})
 		} else {
 			return c.Status(fiber.StatusInternalServerError).JSON(dto.HTTPResponse{

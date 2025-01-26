@@ -47,7 +47,8 @@ func (s *actionsStorage) AddLike(ctx context.Context, userID, promoID string) er
 		WITH updated_likes AS (
 			UPDATE likes
 				SET "like" = TRUE
-				WHERE like_id = ?
+				WHERE user_id = ? 
+          			AND promo_id = ? 
 					AND "like" = FALSE
 				RETURNING promo_id
 		)
@@ -60,7 +61,7 @@ func (s *actionsStorage) AddLike(ctx context.Context, userID, promoID string) er
 	var total int64
 
 	// if actions record doesn't exist
-	if _ = s.db.WithContext(ctx).Exec(querySelect, userID, promoID).Scan(&total); total == 0 {
+	if _ = s.db.WithContext(ctx).Raw(querySelect, userID, promoID).Scan(&total); total == 0 {
 		err := s.db.WithContext(ctx).Exec(queryInsert, userID, promoID).Error
 		if err != nil {
 			return err
@@ -97,7 +98,7 @@ func (s *actionsStorage) DeleteLike(ctx context.Context, userID, promoID string)
 	var total int64
 
 	// if actions record doesn't exist
-	if _ = s.db.WithContext(ctx).Exec(querySelect, userID, promoID).Scan(&total); total == 0 {
+	if _ = s.db.WithContext(ctx).Raw(querySelect, userID, promoID).Scan(&total); total == 0 {
 		err := s.db.WithContext(ctx).Exec(queryInsert, userID, promoID).Error
 		if err != nil {
 			return err
@@ -116,25 +117,27 @@ func (s *actionsStorage) DeleteLike(ctx context.Context, userID, promoID string)
 	return nil
 }
 
-func (s *actionsStorage) AddComment(ctx context.Context, userID, promoID, text string) error {
-	query := `INSERT INTO comments (created_at, promo_id, user_id, text) VALUES (?, ?, ?, ?)`
+func (s *actionsStorage) AddComment(ctx context.Context, userID, promoID, text string) (string, error) {
+	query := `INSERT INTO comments (created_at, promo_id, user_id, text) VALUES (?, ?, ?, ?) RETURNING comment_id`
 
 	queryIncrement := `UPDATE promos SET comment_count = comment_count + 1 WHERE promo_id = ?`
 
-	err := s.db.WithContext(ctx).Exec(query, time.Now(), promoID, userID, text).Error
+	var commentID string
+
+	err := s.db.WithContext(ctx).Raw(query, time.Now(), promoID, userID, text).Scan(&commentID).Error
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = s.db.WithContext(ctx).Exec(queryIncrement, promoID).Error
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return commentID, nil
 }
 
-func (s *actionsStorage) GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error) {
+func (s *actionsStorage) GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, int64, error) {
 	query := `
 		SELECT u.name,
 			   u.surname,
@@ -145,6 +148,7 @@ func (s *actionsStorage) GetComments(ctx context.Context, promoID string, limit,
 		FROM comments c
 				 INNER JOIN users u ON u.id = c.user_id
 		WHERE c.promo_id = ?
+		ORDER BY c.created_at DESC
 		LIMIT ? OFFSET ?`
 
 	type result struct {
@@ -161,7 +165,7 @@ func (s *actionsStorage) GetComments(ctx context.Context, promoID string, limit,
 	err := s.db.WithContext(ctx).Raw(query, promoID, limit, offset).Scan(&results).Error
 
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	comments := make([]dto.Comment, 0, len(results))
@@ -179,7 +183,13 @@ func (s *actionsStorage) GetComments(ctx context.Context, promoID string, limit,
 		})
 	}
 
-	return comments, nil
+	var total int64
+
+	if err = s.db.WithContext(ctx).Raw(`SELECT COUNT(*) FROM comments WHERE promo_id = ?`, promoID).Scan(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return comments, total, nil
 }
 
 func (s *actionsStorage) GetCommentById(ctx context.Context, promoID, commentID string) (dto.Comment, error) {
@@ -210,6 +220,10 @@ func (s *actionsStorage) GetCommentById(ctx context.Context, promoID, commentID 
 
 	if err != nil {
 		return dto.Comment{}, err
+	}
+
+	if r.CommentID == "" {
+		return dto.Comment{}, errorz.NotFound
 	}
 
 	return dto.Comment{
@@ -244,7 +258,7 @@ func (s *actionsStorage) UpdateComment(ctx context.Context, promoID, commentID, 
 		Name      string
 		Surname   string
 		AvatarURL string
-		ID        string
+		ID        string // UserID
 		CommentID string
 		Text      string
 		CreatedAt time.Time
@@ -255,6 +269,10 @@ func (s *actionsStorage) UpdateComment(ctx context.Context, promoID, commentID, 
 	err := s.db.WithContext(ctx).Raw(querySelect, commentID, promoID).Scan(&r).Error
 	if err != nil {
 		return dto.Comment{}, err
+	}
+
+	if r.CommentID == "" {
+		return dto.Comment{}, errorz.NotFound
 	}
 
 	if r.ID != userID {
@@ -289,6 +307,20 @@ func (s *actionsStorage) DeleteComment(ctx context.Context, promoID, commentID, 
 
 	var authorID string
 
+	var existsPromo, existsComment bool
+
+	errExistsPromo := s.db.WithContext(ctx).Raw(`SELECT EXISTS(SELECT * FROM promos WHERE promo_id = ?)`, promoID).Scan(&existsPromo).Error
+
+	errExistsComment := s.db.WithContext(ctx).Raw(`SELECT EXISTS(SELECT * FROM comments WHERE comment_id = ? AND promo_id = ?)`, commentID, promoID).Scan(&existsComment).Error
+
+	if errExistsPromo != nil || errExistsComment != nil {
+		return errExistsPromo
+	}
+
+	if !existsPromo || !existsComment {
+		return errorz.NotFound
+	}
+
 	err := s.db.WithContext(ctx).Raw(querySelect, commentID, promoID).Scan(&authorID).Error
 	if err != nil {
 		return err
@@ -303,8 +335,11 @@ func (s *actionsStorage) DeleteComment(ctx context.Context, promoID, commentID, 
 		return queryErr
 	}
 
-	if query.RowsAffected == 0 {
-		return errorz.NotFound
+	if query.RowsAffected != 0 {
+		err = s.db.WithContext(ctx).Exec(`UPDATE promos SET comment_count = comment_count - 1 WHERE promo_id = ?`, promoID).Error
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -15,8 +15,8 @@ import (
 type actionsStorage interface {
 	AddLike(ctx context.Context, userID, promoID string) error
 	DeleteLike(ctx context.Context, userID, promoID string) error
-	AddComment(ctx context.Context, userID, promoID, text string) error
-	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error)
+	AddComment(ctx context.Context, userID, promoID, text string) (string, error)
+	GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, int64, error)
 	GetCommentById(ctx context.Context, promoID, commentID string) (dto.Comment, error)
 	UpdateComment(ctx context.Context, promoID, commentID, userID, text string) (dto.Comment, error)
 	DeleteComment(ctx context.Context, promoID, commentID, userID string) error
@@ -53,16 +53,16 @@ func (s *actionsService) DeleteLike(ctx context.Context, userID, promoID string)
 	return s.actionStorage.DeleteLike(ctx, userID, promoID)
 }
 
-func (s *actionsService) AddComment(ctx context.Context, userID, promoID, text string) error {
+func (s *actionsService) AddComment(ctx context.Context, userID, promoID, text string) (string, error) {
 	return s.actionStorage.AddComment(ctx, userID, promoID, text)
 }
 
-func (s *actionsService) GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, error) {
+func (s *actionsService) GetComments(ctx context.Context, promoID string, limit, offset int) ([]dto.Comment, int64, error) {
 	return s.actionStorage.GetComments(ctx, promoID, limit, offset)
 }
 
 func (s *actionsService) GetCommentById(ctx context.Context, commentID, promoID string) (dto.Comment, error) {
-	return s.actionStorage.GetCommentById(ctx, commentID, promoID)
+	return s.actionStorage.GetCommentById(ctx, promoID, commentID)
 }
 
 func (s *actionsService) UpdateComment(ctx context.Context, promoID, commentID, userID, text string) (dto.Comment, error) {
