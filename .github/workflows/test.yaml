@@ -12,7 +12,7 @@ permissions:
 jobs:
   build:
     name: Build image
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.action != 'github-classroom[bot]'
     steps:
@@ -42,7 +42,7 @@ jobs:
   tests:
     needs: build
     name: Run tests
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     if: github.action != 'github-classroom[bot]'
     steps:
