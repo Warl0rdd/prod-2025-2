@@ -28,14 +28,18 @@ func NewUserService(storage userStorage) *userService {
 func (s *userService) Create(ctx context.Context, registerReq dto.UserRegister) (*entity.User, error) {
 
 	user := entity.User{
-		Email:     registerReq.Email,
-		Password:  nil,
-		Name:      registerReq.Name,
-		Surname:   registerReq.Surname,
-		AvatarURL: registerReq.AvatarURL,
-		Age:       registerReq.Other.Age,
-		Country:   countries.ByName(strings.ToUpper(registerReq.Other.Country)),
+		Email:    registerReq.Email,
+		Password: nil,
+		Name:     registerReq.Name,
+		Surname:  registerReq.Surname,
+		Age:      registerReq.Other.Age,
+		Country:  countries.ByName(strings.ToUpper(registerReq.Other.Country)),
 	}
+
+	if registerReq.AvatarURL != nil {
+		user.AvatarURL = *registerReq.AvatarURL
+	}
+
 	user.SetPassword(registerReq.Password)
 	return s.storage.Create(ctx, user)
 }

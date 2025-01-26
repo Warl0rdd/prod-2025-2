@@ -55,7 +55,15 @@ func (s *userStorage) GetAll(ctx context.Context, limit, offset int) ([]entity.U
 // Update is a method to update an existing User in database.
 func (s *userStorage) Update(ctx context.Context, user *entity.User) (*entity.User, error) {
 	err := s.db.WithContext(ctx).Model(&entity.User{}).Where("id = ?", user.ID).Updates(&user).Error
-	return user, err
+	if err != nil {
+		return nil, err
+	}
+
+	newUser, getErr := s.GetByID(ctx, user.ID)
+	if getErr != nil {
+		return nil, getErr
+	}
+	return newUser, err
 }
 
 // Delete is a method to delete an existing User in database.

@@ -8,6 +8,7 @@ import (
 	"solution/internal/adapters/controller/api/validator"
 	"solution/internal/adapters/database/postgres"
 	"solution/internal/adapters/database/redis"
+	"solution/internal/adapters/logger"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
@@ -49,6 +50,7 @@ func (h UserHandler) register(c fiber.Ctx) error {
 	var userDTO dto.UserRegister
 
 	if err := c.Bind().Body(&userDTO); err != nil {
+		logger.Log.Error(err)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
@@ -56,9 +58,17 @@ func (h UserHandler) register(c fiber.Ctx) error {
 	}
 
 	if errValidate := h.validator.ValidateData(userDTO); errValidate != nil {
+		logger.Log.Error(errValidate)
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Ошибка в данных запроса.",
+		})
+	}
+
+	if userDTO.AvatarURL != nil && *userDTO.AvatarURL == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Некорректная ссылка на аватар.",
 		})
 	}
 
@@ -176,10 +186,49 @@ func (h UserHandler) updateProfile(c fiber.Ctx) error {
 		})
 	}
 
-	user.Name = userDTO.Name
-	user.Surname = userDTO.Surname
-	user.AvatarURL = userDTO.AvatarURL
-	user.SetPassword(userDTO.Password)
+	if userDTO.AvatarURL != nil && *userDTO.AvatarURL == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Некорректная ссылка на аватар.",
+		})
+	}
+
+	if userDTO.Password != nil && *userDTO.Password == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Некорректный пароль.",
+		})
+	}
+
+	if userDTO.Name != nil && *userDTO.Name == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Некорректная ссылка на аватар.",
+		})
+	}
+
+	if userDTO.Surname != nil && *userDTO.Surname == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Некорректная ссылка на аватар.",
+		})
+	}
+
+	if userDTO.AvatarURL != nil {
+		user.AvatarURL = *userDTO.AvatarURL
+	}
+
+	if userDTO.Password != nil {
+		user.SetPassword(*userDTO.Password)
+	}
+
+	if userDTO.Name != nil {
+		user.Name = *userDTO.Name
+	}
+
+	if userDTO.Surname != nil {
+		user.Surname = *userDTO.Surname
+	}
 
 	updatedUser, errUpdate := h.userService.Update(c.Context(), user)
 	if errUpdate != nil {
