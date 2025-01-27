@@ -153,7 +153,6 @@ func (h ActionsHandler) addComment(c fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(comment)
 }
 
-// TODO negative limit
 func (h ActionsHandler) getComments(ctx fiber.Ctx) error {
 	var getCommentsDTO dto.GetComments
 

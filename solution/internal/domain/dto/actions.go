@@ -25,7 +25,7 @@ type Comment struct {
 type Author struct {
 	Name      string `json:"name"`
 	Surname   string `json:"surname"`
-	AvatarURL string `json:"avatar_url"`
+	AvatarURL string `json:"avatar_url,omitempty"`
 }
 
 type GetCommentById struct {
@@ -49,5 +49,5 @@ type Activate struct {
 }
 
 type ActivateResponse struct {
-	Promo string `json:"promo"`
+	Promo string `json:"promo,omitempty"`
 }

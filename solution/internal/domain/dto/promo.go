@@ -65,16 +65,16 @@ type PromoDTO struct {
 
 	Target      Target   `json:"target"`
 	Active      bool     `json:"active"`
-	ActiveFrom  string   `json:"active_from"`
-	ActiveUntil string   `json:"active_until"`
+	ActiveFrom  string   `json:"active_from,omitempty"`
+	ActiveUntil string   `json:"active_until,omitempty"`
 	Description string   `json:"description"`
-	ImageURL    string   `json:"image_url"`
+	ImageURL    string   `json:"image_url,omitempty"`
 	MaxCount    int      `json:"max_count"`
 	Mode        string   `json:"mode"`
 	LikeCount   int      `json:"like_count"`
 	UsedCount   int      `json:"used_count"`
-	PromoCommon string   `json:"promo_common"`
-	PromoUnique []string `json:"promo_unique"`
+	PromoCommon string   `json:"promo_common,omitempty"`
+	PromoUnique []string `json:"promo_unique,omitempty"`
 }
 
 type PromoGetWithPaginationResponse struct {
@@ -94,7 +94,7 @@ type PromoForUser struct {
 	CompanyID         string `json:"company_id"`
 	CompanyName       string `json:"company_name"`
 	Description       string `json:"description"`
-	ImageURL          string `json:"image_url"`
+	ImageURL          string `json:"image_url,omitempty"`
 	Active            bool   `json:"active"`
 	LikeCount         int    `json:"like_count"`
 	CommentCount      int    `json:"comment_count"`

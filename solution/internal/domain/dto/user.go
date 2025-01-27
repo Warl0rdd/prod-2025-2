@@ -25,10 +25,10 @@ type UserLogin struct {
 }
 
 type UserProfile struct {
-	Email     string    `json:"email" validate:"required,email" example:"example@gmail.com"`        // Required, email must be valid
-	Name      string    `json:"name" validate:"required" example:"John"`                            // Required, user's name
-	Surname   string    `json:"surname" validate:"required" example:"Doe"`                          // Required, user's surname
-	AvatarURL string    `json:"avatar_url" example:"https://example.com/avatar.jpg" validate:"url"` // User's avatar URL
+	Email     string    `json:"email" validate:"required,email" example:"example@gmail.com"`                  // Required, email must be valid
+	Name      string    `json:"name" validate:"required" example:"John"`                                      // Required, user's name
+	Surname   string    `json:"surname" validate:"required" example:"Doe"`                                    // Required, user's surname
+	AvatarURL string    `json:"avatar_url,omitempty" example:"https://example.com/avatar.jpg" validate:"url"` // User's avatar URL
 	Other     UserOther `json:"other"`
 }
 
