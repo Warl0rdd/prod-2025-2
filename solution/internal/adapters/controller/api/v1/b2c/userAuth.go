@@ -169,7 +169,7 @@ func (h UserHandler) getProfile(c fiber.Ctx) error {
 		AvatarURL: user.AvatarURL,
 		Other: dto.UserOther{
 			Age:     user.Age,
-			Country: strings.ToLower(user.Country.Alpha2()),
+			Country: user.CountryOriginal,
 		},
 	}
 
@@ -253,7 +253,7 @@ func (h UserHandler) updateProfile(c fiber.Ctx) error {
 		AvatarURL: updatedUser.AvatarURL,
 		Other: dto.UserOther{
 			Age:     updatedUser.Age,
-			Country: strings.ToLower(updatedUser.Country.Alpha2()),
+			Country: updatedUser.CountryOriginal,
 		},
 	}
 

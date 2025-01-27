@@ -12,13 +12,14 @@ type User struct {
 	CreatedAt time.Time `json:"-"`
 	UpdatedAt time.Time `json:"-"`
 
-	Email     string                `json:"email" gorm:"uniqueIndex"`
-	Password  []byte                `json:"-"`
-	Name      string                `json:"name"`
-	Surname   string                `json:"surname"`
-	AvatarURL string                `json:"avatar_url"`
-	Age       int                   `json:"age"`
-	Country   countries.CountryCode `json:"country"`
+	Email           string                `json:"email" gorm:"uniqueIndex"`
+	Password        []byte                `json:"-"`
+	Name            string                `json:"name"`
+	Surname         string                `json:"surname"`
+	AvatarURL       string                `json:"avatar_url"`
+	Age             int                   `json:"age"`
+	Country         countries.CountryCode `json:"country"`
+	CountryOriginal string                `json:"-" gorm:"country_original"`
 
 	Actions     []Likes      `json:"-" gorm:"foreignKey:UserID"`
 	Comments    []Comment    `json:"-" gorm:"foreignKey:UserID"`

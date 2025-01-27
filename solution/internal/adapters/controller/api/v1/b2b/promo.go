@@ -212,7 +212,7 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 			Target: dto.Target{
 				AgeFrom:    promo.AgeFrom,
 				AgeUntil:   promo.AgeUntil,
-				Country:    strings.ToLower(promo.Country.Alpha2()),
+				Country:    promo.CountryOriginal,
 				Categories: categories,
 			},
 			Active:      promo.Active,
@@ -286,7 +286,7 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 		Target: dto.Target{
 			AgeFrom:    promo.AgeFrom,
 			AgeUntil:   promo.AgeUntil,
-			Country:    strings.ToLower(promo.Country.Alpha2()),
+			Country:    promo.CountryOriginal,
 			Categories: categories,
 		},
 		Active:      promo.Active,
@@ -429,7 +429,7 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 	}
 
 	if promo.Country != 0 {
-		promoReturn.Target.Country = strings.ToLower(promo.Country.Alpha2())
+		promoReturn.Target.Country = promo.CountryOriginal
 	}
 
 	return c.Status(fiber.StatusOK).JSON(promoReturn)

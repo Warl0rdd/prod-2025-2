@@ -32,12 +32,11 @@ func NewPromoStorage(db *gorm.DB) *promoStorage {
 }
 
 // Create is a method to create a new Promo in database.
-// TODO country with given register
 func (s *promoStorage) Create(ctx context.Context, promo entity.Promo) (*entity.Promo, error) {
 	// Insert a promo (parent)'s entity
 	insertPromoQuery := s.db.WithContext(ctx).Raw(
-		"INSERT INTO promos (company_id, created_at, updated_at, active_from, active_until, description, image_url, max_count, mode, promo_common, age_from, age_until, country, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING promo_id;",
-		promo.CompanyID, time.Now(), promo.UpdatedAt, promo.ActiveFrom, promo.ActiveUntil, promo.Description, promo.ImageURL, promo.MaxCount, promo.Mode, promo.PromoCommon, promo.AgeFrom, promo.AgeUntil, promo.Country, promo.Active).Scan(&promo.PromoID)
+		"INSERT INTO promos (company_id, created_at, updated_at, active_from, active_until, description, image_url, max_count, mode, promo_common, age_from, age_until, country, country_original, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING promo_id;",
+		promo.CompanyID, time.Now(), promo.UpdatedAt, promo.ActiveFrom, promo.ActiveUntil, promo.Description, promo.ImageURL, promo.MaxCount, promo.Mode, promo.PromoCommon, promo.AgeFrom, promo.AgeUntil, promo.Country, promo.CountryOriginal, promo.Active).Scan(&promo.PromoID)
 	if err := insertPromoQuery.Error; err != nil {
 		return nil, err
 	}
@@ -81,6 +80,7 @@ func (s *promoStorage) GetByID(ctx context.Context, promoId string) (*entity.Pro
                p.age_from,
                p.age_until,
                p.country,
+               p.country_original,
                COALESCE(
                            JSONB_AGG(
                            jsonb_build_object(
@@ -124,28 +124,30 @@ func (s *promoStorage) GetByID(ctx context.Context, promoId string) (*entity.Pro
             p.promo_common,
             p.age_from,
             p.age_until,
-            p.country`
+            p.country,
+			p.country_original`
 
 	type result struct {
-		PromoID      string
-		CompanyID    string
-		CreatedAt    time.Time
-		UpdatedAt    time.Time
-		Active       bool
-		ActiveFrom   time.Time
-		ActiveUntil  time.Time
-		Description  string
-		ImageURL     string
-		MaxCount     int
-		Mode         string
-		LikeCount    int
-		UsedCount    int
-		PromoCommon  string
-		AgeFrom      int
-		AgeUntil     int
-		Country      countries.CountryCode
-		Categories   *string
-		PromoUniques *string
+		PromoID         string
+		CompanyID       string
+		CreatedAt       time.Time
+		UpdatedAt       time.Time
+		Active          bool
+		ActiveFrom      time.Time
+		ActiveUntil     time.Time
+		Description     string
+		ImageURL        string
+		MaxCount        int
+		Mode            string
+		LikeCount       int
+		UsedCount       int
+		PromoCommon     string
+		AgeFrom         int
+		AgeUntil        int
+		Country         countries.CountryCode
+		CountryOriginal string
+		Categories      *string
+		PromoUniques    *string
 	}
 
 	var res result
@@ -183,23 +185,24 @@ func (s *promoStorage) GetByID(ctx context.Context, promoId string) (*entity.Pro
 	}
 
 	promo := &entity.Promo{
-		PromoID:     res.PromoID,
-		CompanyID:   res.CompanyID,
-		CreatedAt:   res.CreatedAt,
-		UpdatedAt:   res.UpdatedAt,
-		Active:      res.Active,
-		ActiveFrom:  res.ActiveFrom,
-		ActiveUntil: res.ActiveUntil,
-		Description: res.Description,
-		ImageURL:    res.ImageURL,
-		MaxCount:    res.MaxCount,
-		Mode:        res.Mode,
-		LikeCount:   res.LikeCount,
-		UsedCount:   res.UsedCount,
-		PromoCommon: res.PromoCommon,
-		AgeFrom:     res.AgeFrom,
-		AgeUntil:    res.AgeUntil,
-		Country:     res.Country,
+		PromoID:         res.PromoID,
+		CompanyID:       res.CompanyID,
+		CreatedAt:       res.CreatedAt,
+		UpdatedAt:       res.UpdatedAt,
+		Active:          res.Active,
+		ActiveFrom:      res.ActiveFrom,
+		ActiveUntil:     res.ActiveUntil,
+		Description:     res.Description,
+		ImageURL:        res.ImageURL,
+		MaxCount:        res.MaxCount,
+		Mode:            res.Mode,
+		LikeCount:       res.LikeCount,
+		UsedCount:       res.UsedCount,
+		PromoCommon:     res.PromoCommon,
+		AgeFrom:         res.AgeFrom,
+		AgeUntil:        res.AgeUntil,
+		Country:         res.Country,
+		CountryOriginal: res.CountryOriginal,
 	}
 
 	for _, category := range categories {
@@ -239,6 +242,7 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 			   p.age_from,
 			   p.age_until,
 			   p.country,
+			   p.country_original,
 			   COALESCE(
 							   JSONB_AGG(
 							   jsonb_build_object(
@@ -289,7 +293,8 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 			p.promo_common,
 			p.age_from,
 			p.age_until,
-			p.country`
+			p.country,
+			p.country_original`
 
 	switch sortBy {
 	case "active_from":
@@ -303,25 +308,26 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 	query += ` LIMIT ? OFFSET ?`
 
 	type result struct {
-		PromoID      string
-		CompanyID    string
-		CreatedAt    time.Time
-		UpdatedAt    time.Time
-		Active       bool
-		ActiveFrom   time.Time
-		ActiveUntil  time.Time
-		Description  string
-		ImageURL     string
-		MaxCount     int
-		Mode         string
-		LikeCount    int
-		UsedCount    int
-		PromoCommon  string
-		AgeFrom      int
-		AgeUntil     int
-		Country      countries.CountryCode
-		Categories   *string
-		PromoUniques *string
+		PromoID         string
+		CompanyID       string
+		CreatedAt       time.Time
+		UpdatedAt       time.Time
+		Active          bool
+		ActiveFrom      time.Time
+		ActiveUntil     time.Time
+		Description     string
+		ImageURL        string
+		MaxCount        int
+		Mode            string
+		LikeCount       int
+		UsedCount       int
+		PromoCommon     string
+		AgeFrom         int
+		AgeUntil        int
+		Country         countries.CountryCode
+		CountryOriginal string
+		Categories      *string
+		PromoUniques    *string
 	}
 
 	type Category struct {
@@ -368,23 +374,24 @@ func (s *promoStorage) GetWithPagination(ctx context.Context, limit, offset int,
 		}
 
 		promo := entity.Promo{
-			PromoID:     r.PromoID,
-			CompanyID:   r.CompanyID,
-			CreatedAt:   r.CreatedAt,
-			UpdatedAt:   r.UpdatedAt,
-			Active:      r.Active,
-			ActiveFrom:  r.ActiveFrom,
-			ActiveUntil: r.ActiveUntil,
-			Description: r.Description,
-			ImageURL:    r.ImageURL,
-			MaxCount:    r.MaxCount,
-			Mode:        r.Mode,
-			LikeCount:   r.LikeCount,
-			UsedCount:   r.UsedCount,
-			PromoCommon: r.PromoCommon,
-			AgeFrom:     r.AgeFrom,
-			AgeUntil:    r.AgeUntil,
-			Country:     r.Country,
+			PromoID:         r.PromoID,
+			CompanyID:       r.CompanyID,
+			CreatedAt:       r.CreatedAt,
+			UpdatedAt:       r.UpdatedAt,
+			Active:          r.Active,
+			ActiveFrom:      r.ActiveFrom,
+			ActiveUntil:     r.ActiveUntil,
+			Description:     r.Description,
+			ImageURL:        r.ImageURL,
+			MaxCount:        r.MaxCount,
+			Mode:            r.Mode,
+			LikeCount:       r.LikeCount,
+			UsedCount:       r.UsedCount,
+			PromoCommon:     r.PromoCommon,
+			AgeFrom:         r.AgeFrom,
+			AgeUntil:        r.AgeUntil,
+			Country:         r.Country,
+			CountryOriginal: r.CountryOriginal,
 		}
 
 		for _, category := range categories {
@@ -439,6 +446,7 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 
 	if promo.Target != nil && promo.Target.Country != "" {
 		queryUpdate += `, country = COALESCE(?, country)`
+		queryUpdate += `, country_original = COALESCE(?, country_original)`
 	}
 
 	queryUpdate += `WHERE promo_id = ?`
@@ -537,6 +545,7 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 			ageUntil,
 			active,
 			countries.ByName(promo.Target.Country),
+			promo.CountryOriginal,
 			id).Error; err != nil {
 			return nil, err
 		}

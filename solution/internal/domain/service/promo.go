@@ -98,6 +98,7 @@ func (s *promoService) Create(ctx context.Context, fiberCTX fiber.Ctx, promoDTO 
 
 	if promoDTO.Target != nil {
 		promo.Country = countries.ByName(strings.ToUpper(promoDTO.Target.Country))
+		promo.CountryOriginal = promoDTO.Target.Country
 		promo.AgeUntil = promoDTO.Target.AgeUntil
 		if promoDTO.Target.AgeUntil == 0 {
 			promo.AgeUntil = 1000

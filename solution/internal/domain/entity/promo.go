@@ -24,13 +24,14 @@ type Promo struct {
 	PromoCommon  string        `json:"promo_common"`
 	PromoUnique  []PromoUnique `json:"promo_unique;" gorm:"foreignKey:PromoID"`
 
-	AgeFrom     int                   `json:"age_from"`
-	AgeUntil    int                   `json:"age_until"`
-	Country     countries.CountryCode `json:"country"`
-	Categories  []Category            `json:"categories" gorm:"foreignKey:PromoID"`
-	Actions     []Likes               `json:"-" gorm:"foreignKey:PromoID"`
-	Comments    []Comment             `json:"-" gorm:"foreignKey:PromoID"`
-	Activations []Activation          `json:"-" gorm:"foreignKey:PromoID"`
+	AgeFrom         int                   `json:"age_from"`
+	AgeUntil        int                   `json:"age_until"`
+	Country         countries.CountryCode `json:"country"`
+	CountryOriginal string                `json:"-" gorm:"country_original"`
+	Categories      []Category            `json:"categories" gorm:"foreignKey:PromoID"`
+	Actions         []Likes               `json:"-" gorm:"foreignKey:PromoID"`
+	Comments        []Comment             `json:"-" gorm:"foreignKey:PromoID"`
+	Activations     []Activation          `json:"-" gorm:"foreignKey:PromoID"`
 }
 
 type PromoUnique struct {
