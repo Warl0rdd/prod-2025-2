@@ -3,6 +3,7 @@ package b2c
 import (
 	"context"
 	"errors"
+	"github.com/biter777/countries"
 	"github.com/gofiber/fiber/v3"
 	"solution/cmd/app"
 	"solution/internal/adapters/controller/api/validator"
@@ -46,7 +47,6 @@ func NewUserHandler(app *app.App) *UserHandler {
 	}
 }
 
-// TODO: add validation
 func (h UserHandler) register(c fiber.Ctx) error {
 	var userDTO dto.UserRegister
 
@@ -70,6 +70,13 @@ func (h UserHandler) register(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 			Status:  "error",
 			Message: "Некорректная ссылка на аватар.",
+		})
+	}
+
+	if countryCode := countries.ByName(strings.ToUpper(userDTO.Other.Country)); countryCode == countries.Unknown {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
+			Status:  "error",
+			Message: "Ошибка в данных запроса.",
 		})
 	}
 

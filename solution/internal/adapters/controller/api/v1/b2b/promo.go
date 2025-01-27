@@ -335,31 +335,6 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 		})
 	}
 
-	if (promoDTO.Mode != nil) && (*promoDTO.Mode != "COMMON") && (*promoDTO.Mode != "UNIQUE") {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
-			Status:  "error",
-			Message: "Ошибка в данных запроса.",
-		})
-	}
-
-	if (promoDTO.Mode != nil) && (promoDTO.MaxCount != nil) && (promoDTO.PromoUnique == nil || (*promoDTO.MaxCount != 1)) && *promoDTO.Mode == "UNIQUE" {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
-			Status:  "error",
-			Message: "Ошибка в данных запроса.",
-		})
-	}
-
-	if promoDTO.Mode != nil {
-		mode := *promoDTO.Mode
-		if (mode == "COMMON" && promoDTO.PromoUnique != nil) ||
-			(mode == "UNIQUE" && promoDTO.PromoCommon != nil) {
-			return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
-				Status:  "error",
-				Message: "Ошибка в данных запроса.",
-			})
-		}
-	}
-
 	if promoDTO.Target != nil {
 		if len(promoDTO.Target.Country) > 2 {
 			return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
@@ -382,7 +357,7 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 			})
 		}
 
-		if slices.Contains(promoDTO.Target.Categories, "") || slices.Contains(promoDTO.PromoUnique, "") {
+		if slices.Contains(promoDTO.Target.Categories, "") {
 			return c.Status(fiber.StatusBadRequest).JSON(dto.HTTPResponse{
 				Status:  "error",
 				Message: "Ошибка в данных запроса.",

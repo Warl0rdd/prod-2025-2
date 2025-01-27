@@ -6,7 +6,7 @@ type AddLike struct {
 
 type AddComment struct {
 	PromoID string `uri:"id" validate:"required"`
-	Text    string `json:"text" validate:"required"`
+	Text    string `json:"text" validate:"required,min=10,max=1000"`
 }
 
 type GetComments struct {
@@ -41,7 +41,7 @@ type DeleteCommentById struct {
 type UpdateComment struct {
 	ID        string `uri:"id" validate:"required"` // promo id
 	CommentID string `uri:"comment_id" validate:"required"`
-	Text      string `json:"text" validate:"required"`
+	Text      string `json:"text" validate:"required,min=10,max=1000"`
 }
 
 type Activate struct {

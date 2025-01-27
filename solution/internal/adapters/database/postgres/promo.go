@@ -433,8 +433,6 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 			description = COALESCE(?, description),
 			image_url = COALESCE(?, image_url),
 			max_count = COALESCE(?, max_count),
-			mode = COALESCE(?, mode),
-			promo_common = COALESCE(?, promo_common),
 			age_from = COALESCE(?, age_from),
 			age_until = COALESCE(?, age_until),
 			active = COALESCE(?, active)`
@@ -450,10 +448,10 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 		VALUES
 			(?, ?, ?)`
 
-	queryUpdatePromoUniques := `
-		INSERT INTO promo_uniques (promo_id, body, activated, index)
-		VALUES
-			(?, ?, ?, ?)`
+	//queryUpdatePromoUniques := `
+	//	INSERT INTO promo_uniques (promo_id, body, activated, index)
+	//	VALUES
+	//		(?, ?, ?, ?)`
 
 	findOldPromoQuery := s.db.WithContext(ctx).Where("promo_id = ?", id).First(&oldPromo)
 
@@ -465,7 +463,7 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 		return nil, errorz.Forbidden
 	}
 
-	if (promo.MaxCount != nil) && oldPromo.Mode == "UNIQUE" && (promo.PromoUnique == nil || (*promo.MaxCount != 1)) {
+	if (promo.MaxCount != nil) && oldPromo.Mode == "UNIQUE" && (*promo.MaxCount != 1) {
 		logger.Log.Error("unique max count")
 		return nil, errorz.BadRequest
 	}
@@ -535,8 +533,6 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 			promo.Description,
 			promo.ImageURL,
 			promo.MaxCount,
-			promo.Mode,
-			promo.PromoCommon,
 			ageFrom,
 			ageUntil,
 			active,
@@ -551,8 +547,6 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 			promo.Description,
 			promo.ImageURL,
 			promo.MaxCount,
-			promo.Mode,
-			promo.PromoCommon,
 			ageFrom,
 			ageUntil,
 			active,
@@ -570,14 +564,14 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 		}
 	}
 
-	if promo.PromoUnique != nil {
-		s.db.WithContext(ctx).Exec(`DELETE FROM promo_uniques WHERE promo_id = ?`, id)
-		for i, promoUnique := range promo.PromoUnique {
-			if err := s.db.WithContext(ctx).Exec(queryUpdatePromoUniques, id, promoUnique, i).Error; err != nil {
-				return nil, err
-			}
-		}
-	}
+	//if promo.PromoUnique != nil {
+	//	s.db.WithContext(ctx).Exec(`DELETE FROM promo_uniques WHERE promo_id = ?`, id)
+	//	for i, promoUnique := range promo.PromoUnique {
+	//		if err := s.db.WithContext(ctx).Exec(queryUpdatePromoUniques, id, promoUnique, i).Error; err != nil {
+	//			return nil, err
+	//		}
+	//	}
+	//}
 
 	newPromo, err := s.GetByID(ctx, id)
 

@@ -9,20 +9,20 @@ type PromoCreate struct {
 	Target      *Target  `json:"target" validate:"required"`
 	ActiveFrom  string   `json:"active_from"`
 	ActiveUntil string   `json:"active_until"`
-	Description string   `json:"description" validate:"required"`
-	ImageURL    string   `json:"image_url" validate:"omitempty,url"`
-	MaxCount    int      `json:"max_count" validate:"omitempty,required"`
-	Mode        string   `json:"mode"`
-	PromoCommon string   `json:"promo_common"`
-	PromoUnique []string `json:"promo_unique"`
+	Description string   `json:"description" validate:"required,min=10,max=300"`
+	ImageURL    string   `json:"image_url" validate:"omitempty,url,max=350"`
+	MaxCount    int      `json:"max_count" validate:"omitempty,required,min=0,max=100000000"`
+	Mode        string   `json:"mode" validate:"required"`
+	PromoCommon string   `json:"promo_common" validate:"omitempty,min=5,max=30"`
+	PromoUnique []string `json:"promo_unique" validate:"omitempty,max=5000,dive,min=3,max=30"`
 	Active      bool
 }
 
 type Target struct {
-	AgeFrom    int      `json:"age_from,omitempty"`
-	AgeUntil   int      `json:"age_until,omitempty"`
-	Country    string   `json:"country,omitempty"`
-	Categories []string `json:"categories,omitempty"`
+	AgeFrom    int      `json:"age_from" validate:"omitempty,min=0,max=100"`
+	AgeUntil   int      `json:"age_until,omitempty" validate:"omitempty,min=0,max=100"`
+	Country    string   `json:"country,omitempty" validate:"omitempty"`
+	Categories []string `json:"categories,omitempty" validate:"omitempty,max=20,dive,min=2,max=20"`
 }
 
 type PromoCreateResponse struct {
@@ -30,15 +30,12 @@ type PromoCreateResponse struct {
 }
 
 type PromoUpdate struct {
-	Target      *Target  `json:"target,omitempty"`
-	ActiveFrom  *string  `json:"active_from,omitempty"`
-	ActiveUntil *string  `json:"active_until,omitempty"`
-	Description *string  `json:"description,omitempty"`
-	ImageURL    *string  `json:"image_url,omitempty" validate:"omitempty,url"`
-	MaxCount    *int     `json:"max_count,omitempty"`
-	Mode        *string  `json:"mode,omitempty"`
-	PromoCommon *string  `json:"promo_common,omitempty"`
-	PromoUnique []string `json:"promo_unique,omitempty"`
+	Target      *Target `json:"target,omitempty" validate:"omitempty,min=10,max=300"`
+	ActiveFrom  *string `json:"active_from,omitempty"`
+	ActiveUntil *string `json:"active_until,omitempty"`
+	Description *string `json:"description,omitempty"`
+	ImageURL    *string `json:"image_url,omitempty" validate:"omitempty,url,max=350"`
+	MaxCount    *int    `json:"max_count,omitempty" validate:"omitempty,min=0,max=100000000"`
 }
 
 type PromoGetWithPaginationRequest struct {
