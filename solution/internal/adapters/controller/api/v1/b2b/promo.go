@@ -205,13 +205,19 @@ func (h PromoHandler) getWithPagination(c fiber.Ctx) error {
 			promoUniques = append(promoUniques, promoUnique.Body)
 		}
 
+		ageUntil := promo.AgeUntil
+
+		if ageUntil == 1000 {
+			ageUntil = 0
+		}
+
 		promoDTOs = append(promoDTOs, dto.PromoDTO{
 			PromoID:     promo.PromoID,
 			CompanyID:   promo.CompanyID,
 			CompanyName: company.Name,
 			Target: dto.Target{
 				AgeFrom:    promo.AgeFrom,
-				AgeUntil:   promo.AgeUntil,
+				AgeUntil:   ageUntil,
 				Country:    promo.CountryOriginal,
 				Categories: categories,
 			},
@@ -279,7 +285,7 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 		promoUniques = append(promoUniques, promoUnique.Body)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(dto.PromoDTO{
+	promoDTO := dto.PromoDTO{
 		PromoID:     promo.PromoID,
 		CompanyID:   promo.CompanyID,
 		CompanyName: business.Name,
@@ -300,7 +306,13 @@ func (h PromoHandler) getByID(c fiber.Ctx) error {
 		UsedCount:   promo.UsedCount,
 		PromoCommon: promo.PromoCommon,
 		PromoUnique: promoUniques,
-	})
+	}
+
+	if promoDTO.Target.AgeUntil == 1000 {
+		promoDTO.Target.AgeUntil = 0
+	}
+
+	return c.Status(fiber.StatusOK).JSON(promoDTO)
 }
 
 // Обновление промо
@@ -430,6 +442,10 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 
 	if promo.Country != 0 {
 		promoReturn.Target.Country = promo.CountryOriginal
+	}
+
+	if promoDTO.Target.AgeUntil == 1000 {
+		promoReturn.Target.AgeUntil = 0
 	}
 
 	return c.Status(fiber.StatusOK).JSON(promoReturn)

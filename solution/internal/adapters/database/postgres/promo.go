@@ -545,7 +545,7 @@ func (s *promoStorage) Update(ctx context.Context, fiberCtx fiber.Ctx, promo dto
 			ageUntil,
 			active,
 			countries.ByName(promo.Target.Country),
-			promo.CountryOriginal,
+			promo.Target.Country,
 			id).Error; err != nil {
 			return nil, err
 		}
