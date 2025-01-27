@@ -6,6 +6,7 @@ import (
 	"github.com/biter777/countries"
 	"github.com/gofiber/fiber/v3/client"
 	"os"
+	"solution/internal/adapters/logger"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
@@ -77,7 +78,7 @@ func (s *actionsService) Activate(ctx context.Context, user *entity.User, promoI
 	antiFraudAddress := os.Getenv("ANTIFRAUD_ADDRESS")
 	checkCache, cacheErr := s.activationRedisStorage.CheckCache(ctx, user.Email)
 	if cacheErr != nil {
-		return "", cacheErr
+		logger.Log.Error(cacheErr)
 	}
 
 	if !checkCache {
@@ -116,6 +117,25 @@ func (s *actionsService) Activate(ctx context.Context, user *entity.User, promoI
 			if newResp.StatusCode() != 200 {
 				return "", errorz.Forbidden
 			}
+
+			var respBody dto.AntiFraudResponse
+			if jsonErr := json.Unmarshal(resp.Body(), &respBody); jsonErr != nil {
+				return "", jsonErr
+			}
+
+			if respBody.CacheUntil != "" {
+				until, _ := time.Parse("2006-01-02T15:04:05.000", respBody.CacheUntil)
+				cacheCreateErr := s.activationRedisStorage.Cache(ctx, user.Email, until.Add(time.Hour*3)) // UTC+0 to +3
+				if cacheCreateErr != nil {
+					return "", cacheErr
+				}
+			}
+
+			if respBody.Ok == false {
+				return "", errorz.Forbidden
+			}
+
+			return s.activationStorage.ActivatePromo(ctx, user.Age, user.Country, promoID, user.ID)
 		}
 
 		var respBody dto.AntiFraudResponse
@@ -129,6 +149,10 @@ func (s *actionsService) Activate(ctx context.Context, user *entity.User, promoI
 			if cacheCreateErr != nil {
 				return "", cacheErr
 			}
+		}
+
+		if respBody.Ok == false {
+			return "", errorz.Forbidden
 		}
 
 		return s.activationStorage.ActivatePromo(ctx, user.Age, user.Country, promoID, user.ID)

@@ -7,11 +7,13 @@ import (
 	"github.com/biter777/countries"
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
+	"slices"
 	"solution/internal/adapters/logger"
 	"solution/internal/domain/common/errorz"
 	"solution/internal/domain/dto"
 	"solution/internal/domain/entity"
 	"solution/internal/domain/utils/pointers"
+	"strings"
 	"time"
 )
 
@@ -779,6 +781,7 @@ func (s *promoStorage) GetHistory(ctx context.Context, userID string, limit, off
 				 INNER JOIN promos p on p.promo_id = a.promo_id
 				 INNER JOIN businesses b ON b.id = p.company_id
 		WHERE user_id = ?
+		ORDER BY a.created_at DESC
 		LIMIT ? OFFSET ?`
 
 	type result struct {
@@ -821,14 +824,17 @@ func (s *promoStorage) GetHistory(ctx context.Context, userID string, limit, off
 
 func (s *promoStorage) GetStats(ctx context.Context, promoID, companyID string) (dto.PromoStatsResponse, error) {
 	query := `
-		SELECT DISTINCT p.used_count,
-			   COUNT(*) OVER (PARTITION BY u.country) AS activations_count,
-			   u.country
+		SELECT
+			p.used_count,
+			COUNT(*) AS activations_count,
+			u.country,
+			MAX(a.created_at) AS created_at
 		FROM promos p
-				 INNER JOIN public.activations a on p.promo_id = a.promo_id
+				 INNER JOIN activations a ON p.promo_id = a.promo_id
 				 INNER JOIN users u ON a.user_id = u.id
 		WHERE company_id = ?
-		AND p.promo_id = ?`
+		  AND p.promo_id = ?
+		GROUP BY u.country, p.used_count`
 
 	type result struct {
 		ActivationsCount int
@@ -847,12 +853,15 @@ func (s *promoStorage) GetStats(ctx context.Context, promoID, companyID string) 
 
 	var stats dto.PromoStatsResponse
 	for _, r := range results {
-		stats.ActivationsCount = results[0].ActivationsCount
+		stats.ActivationsCount += results[0].ActivationsCount
 		stats.Countries = append(stats.Countries, dto.ActivationsByCountry{
-			Country: countries.CountryCode(r.Country).Alpha2(),
+			Country: strings.ToLower(countries.CountryCode(r.Country).Alpha2()),
 			Count:   r.ActivationsCount,
 		})
 	}
+	slices.SortStableFunc(stats.Countries, func(i, j dto.ActivationsByCountry) int {
+		return strings.Compare(strings.ToLower(i.Country), strings.ToLower(j.Country))
+	})
 
 	return stats, nil
 }

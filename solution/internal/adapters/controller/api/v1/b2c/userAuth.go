@@ -46,6 +46,7 @@ func NewUserHandler(app *app.App) *UserHandler {
 	}
 }
 
+// TODO: add validation
 func (h UserHandler) register(c fiber.Ctx) error {
 	var userDTO dto.UserRegister
 

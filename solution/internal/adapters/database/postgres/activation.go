@@ -5,6 +5,7 @@ import (
 	"github.com/biter777/countries"
 	"gorm.io/gorm"
 	"solution/internal/domain/common/errorz"
+	"time"
 )
 
 type activationStorage struct {
@@ -20,26 +21,22 @@ func (s *activationStorage) ActivatePromo(ctx context.Context, age int, country 
 
 	queryActivate := `
 		WITH common_update AS (
-			-- Update for COMMON mode
 			UPDATE promos
 				SET
-					used_count = CASE
-									 WHEN active = true
-										 AND age_from <= ?
-										 AND age_until >= ?
-										 AND (country = ? OR country = 0)
-										 AND mode = 'COMMON'
-										 AND max_count > used_count
-										 AND promo_id = ? THEN used_count + 1
-									 ELSE used_count
-						END,
+					used_count = used_count + 1,
 					active = CASE
-								 WHEN (used_count >= max_count
-										  AND mode = 'COMMON')
-									 OR active_until < now() THEN false
-								 ELSE true
+								 WHEN (used_count + 1 >= max_count) OR (active_until < NOW())
+									 THEN false
+								 ELSE active
 						END
-				WHERE promo_id = ?
+				WHERE
+					promo_id = ?
+						AND active = TRUE
+						AND age_from <= ?
+						AND age_until >= ?
+						AND (country = ? OR country = 0)
+						AND mode = 'COMMON'
+						AND max_count > used_count
 				RETURNING promo_common AS promocode),
 			 selected_unique AS (
 				 -- Select UNIQUE promo code
@@ -67,7 +64,7 @@ func (s *activationStorage) ActivatePromo(ctx context.Context, age int, country 
 									  WHEN EXISTS (SELECT *
 												   FROM promo_uniques pu
 												   WHERE pu.promo_id = promos.promo_id
-													 AND pu.activated = FALSE) AND active_until > now() THEN true
+													 AND pu.activated = FALSE) AND active_until > now() THEN active
 									  ELSE false
 						 END
 					 WHERE promo_id = ?
@@ -108,7 +105,7 @@ func (s *activationStorage) ActivatePromo(ctx context.Context, age int, country 
 		return "", errorz.NotFound
 	}
 
-	if err := s.db.Raw(queryActivate, age, age, country, promoID, promoID, age, age, country, promoID, promoID).Scan(&res).Error; err != nil {
+	if err := s.db.Raw(queryActivate, promoID, age, age, country, age, age, country, promoID, promoID).Scan(&res).Error; err != nil {
 		return "", err
 	}
 
@@ -116,12 +113,7 @@ func (s *activationStorage) ActivatePromo(ctx context.Context, age int, country 
 		return "", errorz.Forbidden
 	}
 
-	err := s.db.WithContext(ctx).Exec(`UPDATE promos SET used_count = used_count + 1 WHERE promo_id = ?`, promoID).Error
-	if err != nil {
-		return "", err
-	}
-
-	err = s.db.WithContext(ctx).Exec(`INSERT INTO activations (user_id, promo_id) VALUES (?, ?)`, userID, promoID).Error
+	err := s.db.WithContext(ctx).Exec(`INSERT INTO activations (user_id, promo_id, created_at) VALUES (?, ?, ?)`, userID, promoID, time.Now()).Error
 	if err != nil {
 		return "", err
 	}
