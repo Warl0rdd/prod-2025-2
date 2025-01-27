@@ -444,7 +444,7 @@ func (h PromoHandler) update(c fiber.Ctx) error {
 		promoReturn.Target.Country = promo.CountryOriginal
 	}
 
-	if promoDTO.Target.AgeUntil == 1000 {
+	if promoDTO.Target != nil && promoDTO.Target.AgeUntil == 1000 {
 		promoReturn.Target.AgeUntil = 0
 	}
 
